@@ -17,16 +17,18 @@ Nodes:
 """
 
 from pgmpy.models import DiscreteBayesianNetwork
-from pgmpy.factors.discrete import TabularCPD
+from pgmpy.factors.discrete import TabularCPD, DiscreteFactor
 from pgmpy.inference import VariableElimination
 import numpy as np
+from typing import Dict, List, Optional, Tuple
 
-if __name__ == "__main__":
-    # initialize nodes and edges list
-    nodes = ["M", "U", "R", "B", "S"]
-    edges = [("M", "R"), ("U", "R"), ("B", "R"), ("B", "S"), ("R", "S")]
 
-    # create the acyclic directed graph for network
+def initialize_network(
+    nodes: List[str], edges: List[Tuple[str, str]]
+) -> DiscreteBayesianNetwork:
+    """
+    Initializes the Bayesian Network with given nodes and edges.
+    """
     bayesNet = DiscreteBayesianNetwork()
 
     for node in nodes:
@@ -35,28 +37,61 @@ if __name__ == "__main__":
     for parent, child in edges:
         bayesNet.add_edge(parent, child)
 
-    # add CPDs for each node
-    cpd_A = TabularCPD("M", 2, values=[[0.95], [0.05]])
-    cpd_U = TabularCPD("U", 2, values=[[0.85], [0.15]])
-    cpd_H = TabularCPD("B", 2, values=[[0.90], [0.10]])
+    return bayesNet
 
-    cpd_S = TabularCPD(
-        "S",
-        2,
-        values=[[0.98, 0.88, 0.95, 0.6], [0.02, 0.12, 0.05, 0.40]],
-        evidence=["R", "B"],
-        evidence_card=[2, 2],
+
+def add_cpd_to_node(
+    node: str,
+    values: List[List[float]],
+    evidence: Optional[List[str]],
+    evidence_card: Optional[List[int]],
+) -> TabularCPD:
+    """
+    Adds a CPD to the Bayesian Network.
+    """
+    cpd = TabularCPD(
+        node, len(values), values=values, evidence=evidence, evidence_card=evidence_card
     )
+    bayesNet.add_cpds(cpd)
 
-    cpd_R = TabularCPD(
+    return cpd
+
+
+def find_probability(variables: List[str], evidence: Dict[str, int]) -> DiscreteFactor:
+    """
+    Finds the probability of given variables with evidence.
+    """
+    solver = VariableElimination(bayesNet)
+    result = solver.query(variables=variables, evidence=evidence)
+    return result
+
+
+if __name__ == "__main__":
+    # initialize nodes and edges list
+    nodes = ["M", "U", "R", "B", "S"]
+    edges = [("M", "R"), ("U", "R"), ("B", "R"), ("B", "S"), ("R", "S")]
+
+    # create the acyclic directed graph for network
+    bayesNet = initialize_network(nodes, edges)
+
+    # add CPDs for each node
+    cpd_A = add_cpd_to_node("M", [[0.95], [0.05]], None, None)
+    cpd_U = add_cpd_to_node("U", [[0.85], [0.15]], None, None)
+    cpd_H = add_cpd_to_node("B", [[0.90], [0.10]], None, None)
+    cpd_S = add_cpd_to_node(
+        "S",
+        [[0.98, 0.88, 0.95, 0.6], [0.02, 0.12, 0.05, 0.40]],
+        ["R", "B"],
+        [2, 2],
+    )
+    cpd_R = add_cpd_to_node(
         "R",
-        2,
-        values=[
+        [
             [0.96, 0.86, 0.94, 0.82, 0.24, 0.15, 0.10, 0.05],
             [0.04, 0.14, 0.06, 0.18, 0.76, 0.85, 0.90, 0.95],
         ],
-        evidence=["M", "B", "U"],
-        evidence_card=[2, 2, 2],
+        ["M", "B", "U"],
+        [2, 2, 2],
     )
 
     bayesNet.add_cpds(cpd_A, cpd_U, cpd_H, cpd_S, cpd_R)
