@@ -93,8 +93,6 @@ if __name__ == "__main__":
         [2, 2, 2],
     )
 
-    bayesNet.add_cpds(cpd_M, cpd_U, cpd_B, cpd_S, cpd_R)
-
     # check if model is correctly added
     bayesNet.check_model()
     print("Model is correct.")
