@@ -19,7 +19,7 @@ Nodes:
 from pgmpy.models import DiscreteBayesianNetwork
 from pgmpy.factors.discrete import TabularCPD
 from pgmpy.inference import VariableElimination
-from typing import List, Tuple
+from typing import Dict, List, Optional, Tuple
 
 
 def initialize_network(
@@ -39,7 +39,12 @@ def initialize_network(
     return bayesNet
 
 
-def add_cpd_to_node(node, values, evidence, evidence_card):
+def add_cpd_to_node(
+    node: str,
+    values: List[List[float]],
+    evidence: Optional[List[str]],
+    evidence_card: Optional[List[int]],
+) -> TabularCPD:
     """
     Adds a CPD to the Bayesian Network.
     """
@@ -51,7 +56,7 @@ def add_cpd_to_node(node, values, evidence, evidence_card):
     return cpd
 
 
-def find_probability(variables, evidence):
+def find_probability(variables: List[str], evidence: Dict[str, int]) -> float:
     """
     Finds the probability of given variables with evidence.
     """
@@ -94,13 +99,13 @@ if __name__ == "__main__":
     bayesNet.check_model()
     print("Model is correct.")
 
-    # find the probability of conent should be removed from the platform
+    # probability of conent should be removed from the platform
     print("R", find_probability(["R"], None))
 
-    # find the probability of content should be removed from platform given our ML model flags it
+    # probability of content should be removed from platform given our ML model flags it
     print("R | M", find_probability(["R"], {"M": 1}))
 
-    # find the probability of account should be suspended given it was suspended before
+    # probability of account should be suspended given it was suspended before
     print("S | B", find_probability(["S"], {"B": 1}))
 
     # find dependencies between variables
