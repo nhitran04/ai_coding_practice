@@ -51,65 +51,48 @@ class BurglaryClass:
         bayesNet.check_model()
         print("Model is correct.")
 
-        # probability there is a burglary
+        # calculate probabilities
         print("burglary", bayes_instance.find_probability(bayesNet, ["burglary"], None))
-
-        # probability there is an earthquake
         print(
             "earthquake",
             bayes_instance.find_probability(bayesNet, ["earthquake"], None),
         )
-
-        # probability the alarm rings given that both a burglary and earthquake occur
         print(
             "alarm | burglary, earthquake",
             bayes_instance.find_probability(
                 bayesNet, ["alarm"], {"burglary": 1, "earthquake": 1}
             ),
         )
-
-        # probability the alarm rings given a burglary occurs but not an earthquake
         print(
             "alarm | burglary, ~earthquake",
             bayes_instance.find_probability(
                 bayesNet, ["alarm"], {"burglary": 1, "earthquake": 0}
             ),
         )
-
-        # probability the alarm rings given an earthquake occurs but not a burglary
         print(
             "alarm | ~burglary, earthquake",
             bayes_instance.find_probability(
                 bayesNet, ["alarm"], {"burglary": 0, "earthquake": 1}
             ),
         )
-        # probability the alarm rings given neither the earthquake nor burglary occur
         print(
             "alarm | ~burglary, ~earthquake",
             bayes_instance.find_probability(
                 bayesNet, ["alarm"], {"burglary": 0, "earthquake": 0}
             ),
         )
-
-        # probability that john calls given the alarm rings
         print(
             "JohnCalls | alarm",
             bayes_instance.find_probability(bayesNet, ["JohnCalls"], {"alarm": 1}),
         )
-
-        # probability that john calls given the alarm does not ring
         print(
             "JohnCalls | ~alarm",
             bayes_instance.find_probability(bayesNet, ["JohnCalls"], {"alarm": 0}),
         )
-
-        # probability that mary calls given the alarm rings
         print(
             "MaryCalls | alarm",
             bayes_instance.find_probability(bayesNet, ["MaryCalls"], {"alarm": 1}),
         )
-
-        # probability that mary calls given the alarm does not rings
         print(
             "MaryCalls | ~alarm",
             bayes_instance.find_probability(bayesNet, ["MaryCalls"], {"alarm": 0}),
