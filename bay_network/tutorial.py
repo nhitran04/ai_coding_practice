@@ -19,7 +19,6 @@ Nodes:
 from pgmpy.models import DiscreteBayesianNetwork
 from pgmpy.factors.discrete import TabularCPD
 from pgmpy.inference import VariableElimination
-import numpy as np
 from typing import List, Tuple
 
 
