@@ -74,9 +74,9 @@ if __name__ == "__main__":
     bayesNet = initialize_network(nodes, edges)
 
     # add CPDs for each node
-    cpd_A = add_cpd_to_node("M", [[0.95], [0.05]], None, None)
+    cpd_M = add_cpd_to_node("M", [[0.95], [0.05]], None, None)
     cpd_U = add_cpd_to_node("U", [[0.85], [0.15]], None, None)
-    cpd_H = add_cpd_to_node("B", [[0.90], [0.10]], None, None)
+    cpd_B = add_cpd_to_node("B", [[0.90], [0.10]], None, None)
     cpd_S = add_cpd_to_node(
         "S",
         [[0.98, 0.88, 0.95, 0.6], [0.02, 0.12, 0.05, 0.40]],
@@ -93,7 +93,7 @@ if __name__ == "__main__":
         [2, 2, 2],
     )
 
-    bayesNet.add_cpds(cpd_A, cpd_U, cpd_H, cpd_S, cpd_R)
+    bayesNet.add_cpds(cpd_M, cpd_U, cpd_B, cpd_S, cpd_R)
 
     # check if model is correctly added
     bayesNet.check_model()
@@ -107,6 +107,3 @@ if __name__ == "__main__":
 
     # probability of account should be suspended given it was suspended before
     print("S | B", find_probability(["S"], {"B": 1}))
-
-    # find dependencies between variables
-    print("Independencies: ", bayesNet.get_independencies())
