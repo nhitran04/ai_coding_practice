@@ -17,10 +17,10 @@ Nodes:
 """
 
 from pgmpy.models import DiscreteBayesianNetwork
-from pgmpy.factors.discrete import TabularCPD, DiscreteFactor
+from pgmpy.factors.discrete import TabularCPD
 from pgmpy.inference import VariableElimination
 import numpy as np
-from typing import Dict, List, Optional, Tuple
+from typing import List, Tuple
 
 
 def initialize_network(
@@ -40,12 +40,7 @@ def initialize_network(
     return bayesNet
 
 
-def add_cpd_to_node(
-    node: str,
-    values: List[List[float]],
-    evidence: Optional[List[str]],
-    evidence_card: Optional[List[int]],
-) -> TabularCPD:
+def add_cpd_to_node(node, values, evidence, evidence_card):
     """
     Adds a CPD to the Bayesian Network.
     """
@@ -57,13 +52,13 @@ def add_cpd_to_node(
     return cpd
 
 
-def find_probability(variables: List[str], evidence: Dict[str, int]) -> DiscreteFactor:
+def find_probability(variables, evidence):
     """
     Finds the probability of given variables with evidence.
     """
     solver = VariableElimination(bayesNet)
     result = solver.query(variables=variables, evidence=evidence)
-    return result
+    return result.values[1]
 
 
 if __name__ == "__main__":
@@ -101,21 +96,13 @@ if __name__ == "__main__":
     print("Model is correct.")
 
     # find the probability of conent should be removed from the platform
-    solver = VariableElimination(bayesNet)
-    result = solver.query(variables=["R"])
-    print("R", result.values[1])
+    print("R", find_probability(["R"], None))
 
     # find the probability of content should be removed from platform given our ML model flags it
-    result = solver.query(variables=["R"], evidence={"M": 1})
-    print("R | M", result.values[1])
+    print("R | M", find_probability(["R"], {"M": 1}))
 
     # find the probability of account should be suspended given it was suspended before
-    result = solver.query(variables=["S"], evidence={"B": 1})
-    print("S | B", result.values[1])
+    print("S | B", find_probability(["S"], {"B": 1}))
 
     # find dependencies between variables
-    bayesNet.get_independencies()
     print("Independencies: ", bayesNet.get_independencies())
-
-    # completed
-    print("Completed.")
