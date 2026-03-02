@@ -33,7 +33,7 @@ class WeatherClass:
             [2, 2],
         )
 
-        # check if model is correctly asdded
+        # check if model is correctly added
         bayesNet.check_model()
         print("Model is correct.")
 
