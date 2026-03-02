@@ -45,7 +45,8 @@ class BayesNetworkClass:
             evidence_card=evidence_card,
         )
         bayesNet.add_cpds(cpd)
-
+        print("===== CPD for node" + node + " =====")
+        print(cpd)
         return cpd
 
     @staticmethod

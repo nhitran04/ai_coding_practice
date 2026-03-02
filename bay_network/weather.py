@@ -36,3 +36,6 @@ class WeatherClass:
         # check if model is correctly asdded
         bayesNet.check_model()
         print("Model is correct.")
+
+        # calculate probability that rain occurs given the grass is wet
+        print("R | W", bayes_instance.find_probability(bayesNet, ["R"], {"W": 1}))
