@@ -39,3 +39,6 @@ class FourNodeClass:
         # check if model is correctly added
         bayesNet.check_model()
         print("Model is correct.")
+
+        # calculate probability for A | D
+        print("A | D", bayes_instance.find_probability(bayesNet, ["A"], {"D": 1}))

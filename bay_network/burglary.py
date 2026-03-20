@@ -30,6 +30,7 @@ class BurglaryClass:
         cpd_burglary = bayes_instance.add_cpd_to_node(
             bayesNet, "burglary", [[0.999], [0.001]], None, None
         )
+
         cpd_earthquake = bayes_instance.add_cpd_to_node(
             bayesNet, "earthquake", [[0.998], [0.002]], None, None
         )
