@@ -46,6 +46,9 @@ class SimpleEnv(MiniGridEnv):
         else:
             self.place_agent()
 
+        # place the goal in the environment
+        self.put_obj(Goal(), width - 2, 1)
+
 
 def main():
     env = SimpleEnv(render_mode="human")
