@@ -12,8 +12,18 @@ def elimination_ask(X, e, bn):
         pass
 
 
-def order(vars):
-    pass
+def order(X, vars):
+    """
+    Returns ordering for the variables.
+    """
+    order_list = []
+
+    for var in vars:
+        if var != X:
+            order_list.append(var)
+    order_list.append(X)
+
+    return order_list
 
 
 def make_factor(var, e):
@@ -25,4 +35,8 @@ def pointwise_product(factors):
 
 
 def normalize(product):
+    pass
+
+
+if __name__ == "__main__":
     pass
