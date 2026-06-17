@@ -1,7 +1,8 @@
+import numpy as np
+
 from minigrid.core.grid import Grid
 from minigrid.core.world_object import Wall, Goal
 from minigrid.minigrid_env import MiniGridEnv
-from gymnasium.spaces import Discrete
 from minigrid.core.mission import MissionSpace
 from minigrid.manual_control import ManualControl
 
@@ -35,7 +36,35 @@ class SimpleEnv(MiniGridEnv):
         return "reach the goal"
 
 
+def get_states(env):
+    states = []
+    directions = ["up", "down", "right", "left"]
+    for i in range(1, env.width - 1):
+        for j in range(1, env.height - 1):
+            cell = env.grid.get(i, j)
+
+            if cell is not None and cell.type == "wall":
+                continue
+
+            for d in directions:
+                states.append((i, j, d))
+    return states
+
+
+def get_actions(env):
+    available_actions = []
+    for i in env.actions:
+        available_actions.append({i.name})
+    return available_actions
+
+
+def value_iteration():
+    pass
+
+
 if __name__ == "__main__":
     env = SimpleEnv(render_mode="human")
-    manual_control = ManualControl(env, seed=42)
-    manual_control.start()
+    # manual_control = ManualControl(env, seed=42)
+    # manual_control.start()
+    print(get_states(env))
+    # print(get_actions(env))
