@@ -36,9 +36,30 @@ class SimpleEnv(MiniGridEnv):
         return "reach the goal"
 
 
+def __init__(self, reward=None):
+    if reward is None:
+        reward = {0: -0.04, 1: 1.0, 2: -1.0, 3: np.nan}
+
+    env = SimpleEnv(render="human")
+    self.num_rows = env.height
+    self.num_cols = env.width
+    self.num_states = len(get_states(env))
+    self.num_actions = 4
+    self.reward = reward
+
+
 def get_states(env):
+    """
+    A state is represented by the location (x, y) and the agent's orientation.
+
+    Directions:
+    - 0: up
+    - 1: down
+    - 2: right
+    - 3: left
+    """
     states = []
-    directions = ["up", "down", "right", "left"]
+    directions = [0, 1, 2, 3]
     for i in range(1, env.width - 1):
         for j in range(1, env.height - 1):
             cell = env.grid.get(i, j)
@@ -52,19 +73,24 @@ def get_states(env):
 
 
 def get_actions(env):
+    """
+    Actions:
+    - 0: left
+    - 1: right
+    - 2: forward
+    - 3: pickup
+    """
     available_actions = []
     for i in env.actions:
-        available_actions.append({i.name})
+        if i.value >= 0 and i.value <= 3:
+            available_actions.append(i.value)
     return available_actions
-
-
-def value_iteration():
-    pass
 
 
 if __name__ == "__main__":
     env = SimpleEnv(render_mode="human")
     # manual_control = ManualControl(env, seed=42)
     # manual_control.start()
-    print(get_states(env))
+    # print(get_states(env))
     # print(get_actions(env))
+    # print(get_transition_model(env, random_rate=0.2))
