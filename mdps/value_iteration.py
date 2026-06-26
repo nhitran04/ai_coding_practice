@@ -47,25 +47,16 @@ class ValueIterationClass:
         self.num_states = len(self.get_states())
         self.num_actions = 3
         self.reward = reward
-        # self.reward_function = self.get_reward_function(env)
+        self.map = np.array(list(s for s in self.get_states()))
+        self.reward_function = self.get_reward_function()
 
     def get_reward_function(self):
         reward_table = np.zeros(self.num_states)
-        for row in range(self.num_rows):
-            for col in range(self.num_cols):
-                for action in range(self.num_actions):
-                    s = self.get_state_from_pos((row, col, action), self.env)
-                    reward_table[s] = self.reward[self.map[row, col, action]]
-        return reward_table
 
-    def get_state_from_pos(self, pos):
-        """
-        Returns the state index based on position.
-        """
-        indexed_states = self.get_states()
-        for i in indexed_states.keys():
-            if i[0] == pos[0] and i[1] == pos[1] and i[2] == pos[2]:
-                return indexed_states[i]
+        for i in self.get_states().values():
+            reward_table[i] = self.reward[i]
+
+        return reward_table
 
     def get_states(self):
         """
@@ -109,4 +100,5 @@ if __name__ == "__main__":
     # manual_control = ManualControl(env, seed=42)
     # manual_control.start()
     # print(value_iter.get_states())
-    print(value_iter.get_state_from_pos((2, 2, None)))
+    # print(value_iter.get_state_from_pos((2, 2, None)))
+    print(value_iter.get_reward_function())
