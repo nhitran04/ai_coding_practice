@@ -59,7 +59,10 @@ class ValueIterationClass:
         return reward_table
 
     def get_state_from_pos(self, pos):
-        indexed_states = self.get_indexed_states(self.env)
+        """
+        Returns the state index based on position.
+        """
+        indexed_states = self.get_states()
         for i in indexed_states.keys():
             if i[0] == pos[0] and i[1] == pos[1] and i[2] == pos[2]:
                 return indexed_states[i]
@@ -75,7 +78,7 @@ class ValueIterationClass:
             for j in range(1, self.env.height - 1):
                 cell = self.env.grid.get(i, j)
                 if cell is not None and cell.type == "wall":
-                    indexed_states[(i, j)] = 3
+                    indexed_states[(i, j, None)] = 3
                 elif cell is not None and cell.type == "goal":
                     for d in directions:
                         indexed_states[(i, j, d)] = 1
@@ -100,12 +103,10 @@ class ValueIterationClass:
 
 
 if __name__ == "__main__":
-    env = SimpleEnv(render_mode="human")
+    env = SimpleEnv()
     env.reset()
     value_iter = ValueIterationClass(env)
     # manual_control = ManualControl(env, seed=42)
     # manual_control.start()
-    print(value_iter.get_states())
-    # print(get_actions(env))
-    # print(get_transition_model(env, random_rate=0.2))
-    # print(value_iter.get_state_from_pos((3, 1, 0), env))
+    # print(value_iter.get_states())
+    print(value_iter.get_state_from_pos((2, 2, None)))
