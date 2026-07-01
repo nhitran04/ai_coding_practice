@@ -110,27 +110,30 @@ class ValueIterationClass:
         return transition_model
 
     def move_forward(self, row, col, direction):
-        if direction == 0:  # agent facing right
-            if col != self.env.width - 1:
-                new_row, new_col = row, col + 1
-            else:
-                new_row, new_col = row, col
-        elif direction == 1:  # agent facing down
-            if row != self.env.height - 1:
-                new_row, new_col = row + 1, col
-            else:
-                new_row, new_col = row, col
-        elif direction == 2:  # agent facing left
-            if col != 1:
-                new_row, new_col = row, col - 1
-            else:
-                new_row, new_col = row, col
-        elif direction == 3:  # agent facing up
-            if row != 1:
-                new_row, new_col = row - 1, col
-            else:
-                new_row, new_col = row, col
+        """
+        Moves the agent forward depending on its orientation.
+        """
+        new_row, new_col = row, col
+        cell = self.env.grid.get(row, col)
+
+        if cell is not None and cell.type != "wall":
+            if direction == 0:  # agent facing right
+                if col != self.env.width - 1:
+                    new_row, new_col = row, col + 1
+            elif direction == 1:  # agent facing down
+                if row != self.env.height - 1:
+                    new_row, new_col = row + 1, col
+            elif direction == 2:  # agent facing left
+                if col != 1:
+                    new_row, new_col = row, col - 1
+            elif direction == 3:  # agent facing up
+                if row != 1:
+                    new_row, new_col = row - 1, col
+
         return new_row, new_col
+
+    def get_next_state():
+        pass
 
     def get_state_from_pos(self, pos):
         """
