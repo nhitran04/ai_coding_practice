@@ -47,10 +47,13 @@ class ValueIterationClass:
         self.num_states = len(self.get_states())
         self.num_actions = 3
         self.reward = reward
-        self.map = np.array(list(s for s in self.get_states()))
         self.reward_function = self.get_reward_function()
+        self.transition_model = self.get_transition_model()
 
     def get_reward_function(self):
+        """
+        Assigns a reward to each state and returns a reward table.
+        """
         reward_table = np.zeros(self.num_states)
 
         for i in self.get_states().values():
@@ -92,6 +95,58 @@ class ValueIterationClass:
                 available_actions.append(i.value)
         return available_actions
 
+    def get_transition_model(self, random_rate=0.2):
+        transition_model = np.zeros(
+            (self.num_states, self.num_actions, self.num_states)
+        )
+
+        for k, v in self.get_states().items():
+            neighbor_s = np.zeros(self.num_actions)
+
+            if v == 0:
+                for action in range(self.num_actions):
+                    new_row, new_col = k[0], k[1]
+
+                    if action == 0:
+                        new_row = max(k[0] - 1, 0)
+                    elif action == 1:
+                        new_col = min(k[1] + 1, self.num_cols - 1)
+                    elif action == 2:
+                        new_row = min(k[0] + 1, self.num_rows - 1)
+                    elif action == 3:
+                        new_col = max(k[1] - 1, 0)
+
+                    s_prime = self.get_state_from_pos((new_row, new_col, k[2]))
+                    neighbor_s[action] = s_prime
+
+                for action in range(self.num_actions):
+                    if not np.isnan(neighbor_s[action]):
+                        main_neighbor_s = int(neighbor_s[action])
+                        right_neighbor_s = main_neighbor_s % self.num_actions
+                        left_neighbor_s = main_neighbor_s % self.num_actions
+
+                        transition_model[v, action, main_neighbor_s] += 1 - random_rate
+                        transition_model[
+                            v,
+                            action,
+                            right_neighbor_s,
+                        ] += random_rate / 2.0
+                        transition_model[
+                            v,
+                            action,
+                            left_neighbor_s,
+                        ] += random_rate / 2.0
+
+        return transition_model
+
+    def get_state_from_pos(self, pos):
+        """
+        Returns the state index based on position.
+        """
+        for k, v in self.get_states().items():
+            if k[0] == pos[0] and k[1] == pos[1] and k[2] == pos[2]:
+                return v
+
 
 if __name__ == "__main__":
     env = SimpleEnv()
@@ -101,4 +156,6 @@ if __name__ == "__main__":
     # manual_control.start()
     # print(value_iter.get_states())
     # print(value_iter.get_state_from_pos((2, 2, None)))
-    print(value_iter.get_reward_function())
+    # print(value_iter.get_reward_function())
+    print(value_iter.get_transition_model())
+    value_iter.plot_transition_model()
