@@ -105,39 +105,32 @@ class ValueIterationClass:
 
             if v == 0:
                 for action in range(self.num_actions):
-                    new_row, new_col = k[0], k[1]
-
-                    if action == 0:
-                        new_row = max(k[0] - 1, 0)
-                    elif action == 1:
-                        new_col = min(k[1] + 1, self.num_cols - 1)
-                    elif action == 2:
-                        new_row = min(k[0] + 1, self.num_rows - 1)
-                    elif action == 3:
-                        new_col = max(k[1] - 1, 0)
-
-                    s_prime = self.get_state_from_pos((new_row, new_col, k[2]))
-                    neighbor_s[action] = s_prime
-
-                for action in range(self.num_actions):
-                    if not np.isnan(neighbor_s[action]):
-                        main_neighbor_s = int(neighbor_s[action])
-                        right_neighbor_s = main_neighbor_s % self.num_actions
-                        left_neighbor_s = main_neighbor_s % self.num_actions
-
-                        transition_model[v, action, main_neighbor_s] += 1 - random_rate
-                        transition_model[
-                            v,
-                            action,
-                            right_neighbor_s,
-                        ] += random_rate / 2.0
-                        transition_model[
-                            v,
-                            action,
-                            left_neighbor_s,
-                        ] += random_rate / 2.0
+                    new_row, new_col, new_direction = k[0], k[1], k[2]
 
         return transition_model
+
+    def move_forward(self, row, col, direction):
+        if direction == 0:  # agent facing right
+            if col != self.env.width - 1:
+                new_row, new_col = row, col + 1
+            else:
+                new_row, new_col = row, col
+        elif direction == 1:  # agent facing down
+            if row != self.env.height - 1:
+                new_row, new_col = row + 1, col
+            else:
+                new_row, new_col = row, col
+        elif direction == 2:  # agent facing left
+            if col != 1:
+                new_row, new_col = row, col - 1
+            else:
+                new_row, new_col = row, col
+        elif direction == 3:  # agent facing up
+            if row != 1:
+                new_row, new_col = row - 1, col
+            else:
+                new_row, new_col = row, col
+        return new_row, new_col
 
     def get_state_from_pos(self, pos):
         """
