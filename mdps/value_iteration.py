@@ -105,7 +105,21 @@ class ValueIterationClass:
 
             if v == 0:
                 for action in range(self.num_actions):
-                    new_row, new_col, new_direction = k[0], k[1], k[2]
+                    new_row, new_col, new_dir = self.get_next_state(k, action)
+                    s_prime = self.get_state_from_pos((new_row, new_col, new_dir))
+                    neighbor_s[action] = s_prime
+
+                for action in range(self.num_actions):
+                    transition_model[v, action, int(neighbor_s[action])] += (
+                        1 - random_rate
+                    )
+                    transition_model[
+                        v, action, int(neighbor_s[action - 1]) % self.num_actions
+                    ] += random_rate / 2.0
+                    if action != self.num_actions - 1:
+                        transition_model[
+                            v, action, int(neighbor_s[action + 1]) % self.num_actions
+                        ] += random_rate / 2.0
 
         return transition_model
 
@@ -117,23 +131,30 @@ class ValueIterationClass:
         cell = self.env.grid.get(row, col)
 
         if cell is not None and cell.type != "wall":
-            if direction == 0:  # agent facing right
-                if col != self.env.width - 1:
-                    new_row, new_col = row, col + 1
-            elif direction == 1:  # agent facing down
-                if row != self.env.height - 1:
-                    new_row, new_col = row + 1, col
-            elif direction == 2:  # agent facing left
-                if col != 1:
-                    new_row, new_col = row, col - 1
-            elif direction == 3:  # agent facing up
-                if row != 1:
-                    new_row, new_col = row - 1, col
+            if direction == 0 and col != self.env.width - 1:  # agent facing right
+                new_row, new_col = row, col + 1
+            elif direction == 1 and row != self.env.height - 1:  # agent facing down
+                new_row, new_col = row + 1, col
+            elif direction == 2 and col != 1:  # agent facing left
+                new_row, new_col = row, col - 1
+            elif direction == 3 and row != 1:  # agent facing up
+                new_row, new_col = row - 1, col
 
         return new_row, new_col
 
-    def get_next_state():
-        pass
+    def get_next_state(self, state, action):
+        row, col, direction = state
+
+        if direction is not None:
+            if action == 0:  # turn left
+                return (row, col, (direction - 1) % 4)
+            elif action == 1:  # turn right
+                return (row, col, (direction + 1) % 4)
+            elif action == 2:  # move forward
+                new_row, new_col = self.move_forward(row, col, direction)
+                return (new_row, new_col, direction)
+
+        return state
 
     def get_state_from_pos(self, pos):
         """
@@ -154,4 +175,3 @@ if __name__ == "__main__":
     # print(value_iter.get_state_from_pos((2, 2, None)))
     # print(value_iter.get_reward_function())
     print(value_iter.get_transition_model())
-    value_iter.plot_transition_model()
