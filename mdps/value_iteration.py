@@ -107,30 +107,33 @@ class ValueIterationClass:
             (self.num_states, self.num_actions, self.num_states)
         )
 
-        for k, v in self.get_states().items():
-            neighbor_s = np.zeros(self.num_actions)
+        for state in self.states:
+            state_index = self.state_to_index[state]
+            reward_type = self.state_rewards[state]
 
-            if v == 0:
+            # Probability if goal or wall is set to 1.0.
+            if reward_type in [1, 3]:
                 for action in range(self.num_actions):
-                    new_row, new_col, new_dir = self.get_next_state(k, action)
-                    s_prime = self.get_state_from_pos((new_row, new_col, new_dir))
-                    neighbor_s[action] = s_prime
+                    transition_model[state_index, action, state_index] = 1.0
+                continue
 
-                for action in range(self.num_actions):
-                    main = int(neighbor_s[action])
-                    transition_model[v, action, main] += 1 - random_rate
+            # Sets probabilities for each possible action.
+            for action in range(self.num_actions):
+                possible_actions = [
+                    (action, 1 - random_rate),
+                    ((action - 1) % self.num_actions, random_rate / 2.0),
+                    ((action + 1) % self.num_actions, random_rate / 2.0),
+                ]
 
-                    if action != 0:
-                        left = int(neighbor_s[action - 1])
-                        transition_model[v, action, left % self.num_actions] += (
-                            random_rate / 2.0
-                        )
+                # Computes probabilites for each transition.
+                for actual_action, probability in possible_actions:
+                    next_state = self.get_next_state(state, actual_action)
+                    next_index = self.get_state_from_pos(next_state)
 
-                    if action != self.num_actions - 1:
-                        right = int(neighbor_s[action + 1])
-                        transition_model[v, action, right % self.num_actions] += (
-                            random_rate / 2.0
-                        )
+                    if next_index is None:
+                        next_index = state_index
+
+                    transition_model[state_index, action, next_index] += probability
 
         return transition_model
 
@@ -189,5 +192,5 @@ if __name__ == "__main__":
     # manual_control.start()
     # print(value_iter.get_states())
     # print(value_iter.get_state_from_pos((2, 2, None)))
-    print(value_iter.get_reward_function())
-    # print(value_iter.get_transition_model())
+    # print(value_iter.get_reward_function())
+    print(value_iter.get_transition_model())
