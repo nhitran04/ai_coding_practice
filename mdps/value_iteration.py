@@ -41,7 +41,7 @@ class SimpleEnv(MiniGridEnv):
 class ValueIterationClass:
     def __init__(self, env, reward=None):
         if reward is None:
-            reward = {0: -0.04, 1: 1.0, 2: -1.0, 3: np.nan}
+            reward = {0: -0.04, 1: 1.0, 2: -1.0}
 
         self.env = env
         self.num_rows = env.height
@@ -79,7 +79,7 @@ class ValueIterationClass:
             for j in range(1, self.env.height - 1):
                 cell = self.env.grid.get(i, j)
                 if cell is not None and cell.type == "wall":
-                    state_rewards[(i, j, None)] = 3
+                    continue
                 elif cell is not None and cell.type == "goal":
                     for d in directions:
                         state_rewards[(i, j, d)] = 1
@@ -183,6 +183,47 @@ class ValueIterationClass:
         """
         return self.state_to_index.get(pos)
 
+    def value_iteration(self, gamma, epsilon):
+        values = np.zeros(self.num_states)
+
+        while True:
+            delta = 0
+            new_values = values.copy()
+
+            for s in self.get_states():
+                state_index = self.state_to_index[s]
+                reward_type = self.state_rewards[s]
+
+                if reward_type == 1:
+                    new_values[state_index] = self.reward_function[state_index]
+                    continue
+
+                action_values = []
+
+                for action in range(self.num_actions):
+                    expected_future_reward = np.sum(
+                        self.transition_model[state_index, action] * values
+                    )
+
+                    action_value = (
+                        self.reward_function[state_index]
+                        + gamma * expected_future_reward
+                    )
+
+                    action_values.append(action_value)
+
+                best_value = max(action_values)
+                new_values[state_index] = best_value
+
+                delta = max(delta, abs(values[state_index] - best_value))
+
+            values = new_values
+
+            if delta < epsilon:
+                break
+
+        return values
+
 
 if __name__ == "__main__":
     env = SimpleEnv()
@@ -193,4 +234,7 @@ if __name__ == "__main__":
     # print(value_iter.get_states())
     # print(value_iter.get_state_from_pos((2, 2, None)))
     # print(value_iter.get_reward_function())
-    print(value_iter.get_transition_model())
+    # print(value_iter.get_transition_model())
+
+    values = value_iter.value_iteration(gamma=0.99, epsilon=1e-6)
+    print(values)
