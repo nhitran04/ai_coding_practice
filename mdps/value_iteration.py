@@ -1,10 +1,12 @@
 import numpy as np
+import matplotlib.pyplot as plt
 
 from minigrid.core.grid import Grid
 from minigrid.core.world_object import Wall, Goal
 from minigrid.minigrid_env import MiniGridEnv
 from minigrid.core.mission import MissionSpace
 from minigrid.manual_control import ManualControl
+from matplotlib import patches
 
 
 class SimpleEnv(MiniGridEnv):
@@ -46,6 +48,7 @@ class ValueIterationClass:
         self.num_cols = env.width
         self.num_states = len(self.get_states())
         self.num_actions = 3
+        self.num_directions = 4
         self.reward = reward
         self.reward_function = self.get_reward_function()
         self.transition_model = self.get_transition_model()
@@ -110,16 +113,20 @@ class ValueIterationClass:
                     neighbor_s[action] = s_prime
 
                 for action in range(self.num_actions):
-                    transition_model[v, action, int(neighbor_s[action])] += (
-                        1 - random_rate
-                    )
-                    transition_model[
-                        v, action, int(neighbor_s[action - 1]) % self.num_actions
-                    ] += random_rate / 2.0
+                    main = int(neighbor_s[action])
+                    transition_model[v, action, main] += 1 - random_rate
+
+                    if action != 0:
+                        left = int(neighbor_s[action - 1])
+                        transition_model[v, action, left % self.num_actions] += (
+                            random_rate / 2.0
+                        )
+
                     if action != self.num_actions - 1:
-                        transition_model[
-                            v, action, int(neighbor_s[action + 1]) % self.num_actions
-                        ] += random_rate / 2.0
+                        right = int(neighbor_s[action + 1])
+                        transition_model[v, action, right % self.num_actions] += (
+                            random_rate / 2.0
+                        )
 
         return transition_model
 
