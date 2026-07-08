@@ -46,6 +46,9 @@ class ValueIterationClass:
         self.env = env
         self.num_rows = env.height
         self.num_cols = env.width
+        self.state_rewards = self.get_states()
+        self.states = list(self.state_rewards.keys())
+        self.state_to_index = {state: index for index, state in enumerate(self.states)}
         self.num_states = len(self.get_states())
         self.num_actions = 3
         self.num_directions = 4
@@ -59,8 +62,9 @@ class ValueIterationClass:
         """
         reward_table = np.zeros(self.num_states)
 
-        for i in self.get_states().values():
-            reward_table[i] = self.reward[i]
+        for state, state_index in self.state_to_index.items():
+            reward_type = self.state_rewards[state]
+            reward_table[state_index] = self.reward[reward_type]
 
         return reward_table
 
@@ -68,22 +72,22 @@ class ValueIterationClass:
         """
         A state is represented by the location (x, y) and the agent's orientation.
         """
-        indexed_states = {}
+        state_rewards = {}
         directions = [0, 1, 2, 3]
 
         for i in range(1, self.env.width - 1):
             for j in range(1, self.env.height - 1):
                 cell = self.env.grid.get(i, j)
                 if cell is not None and cell.type == "wall":
-                    indexed_states[(i, j, None)] = 3
+                    state_rewards[(i, j, None)] = 3
                 elif cell is not None and cell.type == "goal":
                     for d in directions:
-                        indexed_states[(i, j, d)] = 1
+                        state_rewards[(i, j, d)] = 1
                 else:
                     for d in directions:
-                        indexed_states[(i, j, d)] = 0
+                        state_rewards[(i, j, d)] = 0
 
-        return indexed_states
+        return state_rewards
 
     def get_actions(self):
         """
@@ -130,24 +134,31 @@ class ValueIterationClass:
 
         return transition_model
 
-    def move_forward(self, row, col, direction):
+    def move_forward(self, x, y, direction):
         """
         Moves the agent forward depending on its orientation.
         """
-        new_row, new_col = row, col
-        cell = self.env.grid.get(row, col)
+        new_x, new_y = x, y
 
-        if cell is not None and cell.type != "wall":
-            if direction == 0 and col != self.env.width - 1:  # agent facing right
-                new_row, new_col = row, col + 1
-            elif direction == 1 and row != self.env.height - 1:  # agent facing down
-                new_row, new_col = row + 1, col
-            elif direction == 2 and col != 1:  # agent facing left
-                new_row, new_col = row, col - 1
-            elif direction == 3 and row != 1:  # agent facing up
-                new_row, new_col = row - 1, col
+        if direction == 0:  # agent faces fight
+            new_x += 1
+        elif direction == 1:  # agent faces down
+            new_y += 1
+        elif direction == 2:  # agent faces left
+            new_x -= 1
+        elif direction == 3:  # agent faces up
+            new_y -= 1
 
-        return new_row, new_col
+        positions = {(state[0], state[1]) for state in self.states}
+
+        if (new_x, new_y) not in positions:
+            return x, y
+
+        cell = self.env.grid.get(new_x, new_y)
+        if cell is not None and cell.type == "wall":
+            return x, y
+
+        return new_x, new_y
 
     def get_next_state(self, state, action):
         row, col, direction = state
@@ -167,9 +178,7 @@ class ValueIterationClass:
         """
         Returns the state index based on position.
         """
-        for k, v in self.get_states().items():
-            if k[0] == pos[0] and k[1] == pos[1] and k[2] == pos[2]:
-                return v
+        return self.state_to_index.get(pos)
 
 
 if __name__ == "__main__":
@@ -180,5 +189,5 @@ if __name__ == "__main__":
     # manual_control.start()
     # print(value_iter.get_states())
     # print(value_iter.get_state_from_pos((2, 2, None)))
-    # print(value_iter.get_reward_function())
-    print(value_iter.get_transition_model())
+    print(value_iter.get_reward_function())
+    # print(value_iter.get_transition_model())
