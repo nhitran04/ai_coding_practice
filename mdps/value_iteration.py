@@ -1,5 +1,6 @@
 import numpy as np
 import matplotlib.pyplot as plt
+import sys
 
 from minigrid.core.grid import Grid
 from minigrid.core.world_object import Wall, Goal
@@ -200,6 +201,27 @@ class ValueIterationClass:
                     new_values[state_index] = self.reward_function[state_index]
                     continue
 
+                action_values = []
+
+                for action in range(self.num_actions):
+                    expected_future_value = np.sum(
+                        self.transition_model[state_index, action] * values
+                    )
+
+                    action_value = (
+                        self.reward_function[state_index]
+                        + gamma * expected_future_value
+                    )
+
+                    action_values.append(action_value)
+
+                best_value = max(action_values)
+                new_values[state_index] = best_value
+
+                delta = max(delta, abs(values[state_index] - best_value))
+
+            values = new_values
+
             if delta < epsilon:
                 break
 
@@ -215,7 +237,14 @@ if __name__ == "__main__":
     # print(value_iter.get_states())
     # print(value_iter.get_state_from_pos((2, 2, None)))
     # print(value_iter.get_reward_function())
-    # print(value_iter.get_transition_model())
+
+    # transition_model = value_iter.get_transition_model()
+
+    # with open("transition_model.txt", "w") as f:
+    #     for state_index in range(transition_model.shape[0]):
+    #         f.write(f"state {state_index}\n")
+    #         np.savetxt(f, transition_model[state_index], fmt="%.2f")
+    #         f.write("\n")
 
     values = value_iter.value_iteration(gamma=0.99, epsilon=1e-6)
     print(values)
