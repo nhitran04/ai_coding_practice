@@ -46,7 +46,7 @@ class ValueIterationClass:
         self.env = env
         self.num_rows = env.height
         self.num_cols = env.width
-        self.state_rewards = self.get_states()
+        self.state_reward_types = self.get_states()
         self.states = list(self.state_rewards.keys())
         self.state_to_index = {state: index for index, state in enumerate(self.states)}
         self.num_states = len(self.get_states())
@@ -63,7 +63,7 @@ class ValueIterationClass:
         reward_table = np.zeros(self.num_states)
 
         for state, state_index in self.state_to_index.items():
-            reward_type = self.state_rewards[state]
+            reward_type = self.state_reward_types[state]
             reward_table[state_index] = self.reward[reward_type]
 
         return reward_table
@@ -72,7 +72,7 @@ class ValueIterationClass:
         """
         A state is represented by the location (x, y) and the agent's orientation.
         """
-        state_rewards = {}
+        state_reward_types = {}
         directions = [0, 1, 2, 3]
 
         for i in range(1, self.env.width - 1):
@@ -82,12 +82,12 @@ class ValueIterationClass:
                     continue
                 elif cell is not None and cell.type == "goal":
                     for d in directions:
-                        state_rewards[(i, j, d)] = 1
+                        state_reward_types[(i, j, d)] = 1
                 else:
                     for d in directions:
-                        state_rewards[(i, j, d)] = 0
+                        state_reward_types[(i, j, d)] = 0
 
-        return state_rewards
+        return state_reward_types
 
     def get_actions(self):
         """
@@ -187,6 +187,7 @@ class ValueIterationClass:
         values = np.zeros(self.num_states)
 
         while True:
+            # Initialize delta and set of updated utilites to 0.
             delta = 0
             new_values = values.copy()
 
@@ -194,30 +195,10 @@ class ValueIterationClass:
                 state_index = self.state_to_index[s]
                 reward_type = self.state_rewards[s]
 
+                # Reward only given once in a terminal state.
                 if reward_type == 1:
                     new_values[state_index] = self.reward_function[state_index]
                     continue
-
-                action_values = []
-
-                for action in range(self.num_actions):
-                    expected_future_reward = np.sum(
-                        self.transition_model[state_index, action] * values
-                    )
-
-                    action_value = (
-                        self.reward_function[state_index]
-                        + gamma * expected_future_reward
-                    )
-
-                    action_values.append(action_value)
-
-                best_value = max(action_values)
-                new_values[state_index] = best_value
-
-                delta = max(delta, abs(values[state_index] - best_value))
-
-            values = new_values
 
             if delta < epsilon:
                 break
