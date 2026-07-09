@@ -47,7 +47,7 @@ class ValueIterationClass:
         self.num_rows = env.height
         self.num_cols = env.width
         self.state_reward_types = self.get_states()
-        self.states = list(self.state_rewards.keys())
+        self.states = list(self.state_reward_types.keys())
         self.state_to_index = {state: index for index, state in enumerate(self.states)}
         self.num_states = len(self.get_states())
         self.num_actions = 3
@@ -109,7 +109,7 @@ class ValueIterationClass:
 
         for state in self.states:
             state_index = self.state_to_index[state]
-            reward_type = self.state_rewards[state]
+            reward_type = self.state_reward_types[state]
 
             # Probability if goal or wall is set to 1.0.
             if reward_type in [1, 3]:
@@ -193,7 +193,7 @@ class ValueIterationClass:
 
             for s in self.get_states():
                 state_index = self.state_to_index[s]
-                reward_type = self.state_rewards[s]
+                reward_type = self.state_reward_types[s]
 
                 # Reward only given once in a terminal state.
                 if reward_type == 1:
