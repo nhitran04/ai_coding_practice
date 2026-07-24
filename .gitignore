@@ -1,0 +1,6 @@
+*.txt
+*.json
+*.txt
+__pycache__
+.pytest_cache
+ai_coding_practice.egg-info
