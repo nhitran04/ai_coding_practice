@@ -1,6 +1,7 @@
 """A MiniGrid environment with a 4-column by 3-row playable area."""
 
-from typing import Callable, Generic, TypeVar
+from dataclasses import dataclass, field
+from typing import Callable, Generic, Hashable, TypeVar
 
 from minigrid.core.actions import Actions
 from minigrid.core.grid import Grid
@@ -10,12 +11,14 @@ from minigrid.manual_control import ManualControl
 from minigrid.minigrid_env import MiniGridEnv
 
 
-State = TypeVar("State")
-Action = TypeVar("Action")
+State = TypeVar("State", bound=Hashable)
+Action = TypeVar("Action", bound=Hashable)
 
 
 def fixed_policy(state: tuple[int, int, int]) -> Actions:
-    """Map (x, y, direction) to an action toward the goal at (4, 1)."""
+    """
+    Map (x, y, direction) to an action toward the goal at (4, 1).
+    """
     x, y, direction = state
     if (x, y) == (4, 1):
         return Actions.done
@@ -29,58 +32,100 @@ def fixed_policy(state: tuple[int, int, int]) -> Actions:
     return Actions.left
 
 
+@dataclass
+class LearnedMDP(Generic[State, Action]):
+    """The textbook's learned model P, transition rewards R, actions A, and
+    γ."""
+
+    gamma: float
+    P: dict[tuple[State, Action], dict[State, float]] = field(default_factory=dict)
+    R: dict[tuple[State, Action, State], float] = field(default_factory=dict)
+    A: dict[State, set[Action]] = field(default_factory=dict)
+
+
 class PassiveADPAgent(Generic[State, Action]):
-    """Follow a fixed policy while learning the model and state utilities."""
+    """AIMA 4e, Figure 22.2: PASSIVE-ADP-LEARNER.
+
+    Source: https://aima.cs.berkeley.edu/algorithms.pdf Method signatures
+    include terminal-state handling for episodic MiniGrid runs.
+    """
 
     def __init__(
         self,
         policy: Callable[[State], Action],
         discount_factor: float = 0.99,
     ) -> None:
-        if not 0.0 <= discount_factor <= 1.0:
-            raise ValueError("discount_factor must be between 0 and 1")
+        """
+        Store the fixed policy and initialize the learned MDP and persistent
+        tables.
+        """
+        # A discount below one guarantees a unique discounted Bellman solution.
+        if not 0.0 <= discount_factor < 1.0:
+            raise ValueError("discount_factor must be at least 0 and less than 1")
 
-        self.policy = policy
-        self.discount_factor = discount_factor
-
-        # Learned state rewards and utilities.
-        self.rewards: dict[State, float] = {}
-        self.reward_counts: dict[State, int] = {}
-        self.utilities: dict[State, float] = {}
+        self.pi = policy
+        self.mdp: LearnedMDP[State, Action] = LearnedMDP(discount_factor)
+        self.U: dict[State, float] = {}
+        self.N: dict[tuple[State, Action], dict[State, int]] = {}
+        self.s: State | None = None
+        self.a: Action | None = None
         self.terminal_states: set[State] = set()
 
-        # Estimate P(next_state | state, action) from observed transitions.
-        self.state_action_counts: dict[tuple[State, Action], int] = {}
-        self.transition_counts: dict[tuple[State, Action, State], int] = {}
-        self.transition_model: dict[tuple[State, Action], dict[State, float]] = {}
-
-        # The first percept of an episode has no preceding transition.
-        self.previous_state: State | None = None
-        self.previous_action: Action | None = None
-
-    def act(
+    def passive_adp_learning(
         self,
-        percept: tuple[State, float, bool],  # state, reward, terminal
-    ) -> Action | None: ...
+        percept: tuple[State, float],
+        *,
+        terminal: bool = False,
+    ) -> Action | None:
+        """Learn from (state, reward), evaluate the policy, and return its next
+        action.
 
-    def update_reward(self, state: State, reward: float) -> None: ...
+        The reward belongs to the previous transition. A terminal percept ends
+        the episode after that transition is learned and returns no action.
+        """
+        ...
 
-    def update_transition_model(
-        self,
-        previous_state: State,
-        previous_action: Action,
-        current_state: State,
-    ) -> None: ...
+    def act(self, percept: tuple[State, float, bool]) -> Action | None:
+        """
+        Adapt a (state, reward, terminal) percept to passive_adp_learning.
+        """
+        ...
 
-    def evaluate_policy(self) -> None: ...
+    @staticmethod
+    def normalize(outcome_counts: dict[State, int]) -> dict[State, float]:
+        """
+        Convert outcome counts into probabilities summing to one.
+        """
+        ...
 
-    def reset_episode(self) -> None: ...
+    @staticmethod
+    def policy_evaluation(
+        policy: Callable[[State], Action],
+        utilities: dict[State, float],
+        mdp: LearnedMDP[State, Action],
+    ) -> dict[State, float]:
+        """
+        Return utilities satisfying the fixed-policy Bellman equations.
+        """
+        ...
+
+    def reset_episode(self) -> None:
+        """
+        Clear the previous state and action while retaining the learned model
+        and utilities.
+        """
+        ...
 
 
 class SimpleEnv(MiniGridEnv):
-    """Reach the goal in a 4x3 interior surrounded by boundary walls."""
+    """
+    Reach the goal in a 4x3 interior surrounded by boundary walls.
+    """
 
     def __init__(self, **kwargs):
+        """
+        Configure the mission, grid dimensions, and episode step limit.
+        """
         mission_space = MissionSpace(mission_func=self._gen_mission)
         # MiniGrid dimensions include the surrounding walls.
         super().__init__(
@@ -93,9 +138,16 @@ class SimpleEnv(MiniGridEnv):
 
     @staticmethod
     def _gen_mission():
+        """
+        Return the instruction describing the environment's objective
+        """
         return "reach the goal"
 
     def _gen_grid(self, width, height):
+        """
+        Build the boundary walls and place the agent and goal at their starting
+        positions.
+        """
         self.grid = Grid(width, height)
         self.grid.wall_rect(0, 0, width, height)
 
