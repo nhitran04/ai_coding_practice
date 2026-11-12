@@ -36,7 +36,27 @@ class PassiveADPAgent(Generic[State, Action]):
         self,
         policy: Callable[[State], Action],
         discount_factor: float = 0.99,
-    ) -> None: ...
+    ) -> None:
+        if not 0.0 <= discount_factor <= 1.0:
+            raise ValueError("discount_factor must be between 0 and 1")
+
+        self.policy = policy
+        self.discount_factor = discount_factor
+
+        # Learned state rewards and utilities.
+        self.rewards: dict[State, float] = {}
+        self.reward_counts: dict[State, int] = {}
+        self.utilities: dict[State, float] = {}
+        self.terminal_states: set[State] = set()
+
+        # Estimate P(next_state | state, action) from observed transitions.
+        self.state_action_counts: dict[tuple[State, Action], int] = {}
+        self.transition_counts: dict[tuple[State, Action, State], int] = {}
+        self.transition_model: dict[tuple[State, Action], dict[State, float]] = {}
+
+        # The first percept of an episode has no preceding transition.
+        self.previous_state: State | None = None
+        self.previous_action: Action | None = None
 
     def act(
         self,
