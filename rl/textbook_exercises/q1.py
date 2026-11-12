@@ -34,8 +34,10 @@ def fixed_policy(state: tuple[int, int, int]) -> Actions:
 
 @dataclass
 class LearnedMDP(Generic[State, Action]):
-    """The textbook's learned model P, transition rewards R, actions A, and
-    γ."""
+    """
+    The textbook's learned model P, transition rewards R, actions A, and
+    discount factor gamma.
+    """
 
     gamma: float
     P: dict[tuple[State, Action], dict[State, float]] = field(default_factory=dict)
@@ -89,7 +91,8 @@ class PassiveADPAgent(Generic[State, Action]):
         """
         Adapt a (state, reward, terminal) percept to passive_adp_learning.
         """
-        ...
+        state, reward, terminal = percept
+        return self.passive_adp_learning((state, reward), terminal=terminal)
 
     @staticmethod
     def normalize(outcome_counts: dict[State, int]) -> dict[State, float]:
