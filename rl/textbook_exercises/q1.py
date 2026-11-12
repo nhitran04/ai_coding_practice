@@ -33,10 +33,14 @@ def fixed_policy(state: tuple[int, int, int]) -> Actions:
 
 
 @dataclass
-class LearnedMDP(Generic[State, Action]):
+class MDP(Generic[State, Action]):
     """
-    The textbook's learned model P, transition rewards R, actions A, and
-    discount factor gamma.
+    Tabular MDP representation used by the passive ADP agent.
+
+    P stores estimated transition probabilities P(s' | s, a), R stores observed
+    transition rewards R(s, a, s'), and A records actions observed in each
+    state. The agent learns these tables; discount factor gamma is supplied in
+    advance.
     """
 
     gamma: float
@@ -58,20 +62,23 @@ class PassiveADPAgent(Generic[State, Action]):
         discount_factor: float = 0.99,
     ) -> None:
         """
-        Store the fixed policy and initialize the learned MDP and persistent
-        tables.
+        Store the fixed policy and initialize the MDP representation and
+        persistent tables.
         """
         # A discount below one guarantees a unique discounted Bellman solution.
         if not 0.0 <= discount_factor < 1.0:
             raise ValueError("discount_factor must be at least 0 and less than 1")
 
-        self.pi = policy
-        self.mdp: LearnedMDP[State, Action] = LearnedMDP(discount_factor)
-        self.U: dict[State, float] = {}
-        self.N: dict[tuple[State, Action], dict[State, int]] = {}
-        self.s: State | None = None
-        self.a: Action | None = None
-        self.terminal_states: set[State] = set()
+        self.pi = policy  # fixed policy
+        self.mdp: MDP[State, Action] = MDP(discount_factor)  # MDP
+        self.U: dict[State, float] = {}  # table of utilities for states
+
+        self.N: dict[
+            tuple[State, Action], dict[State, int]
+        ] = {}  # table of outcome count vecctors
+
+        self.s: State | None = None  # previous state
+        self.a: Action | None = None  # previous action
 
     def passive_adp_learning(
         self,
@@ -79,13 +86,26 @@ class PassiveADPAgent(Generic[State, Action]):
         *,
         terminal: bool = False,
     ) -> Action | None:
-        """Learn from (state, reward), evaluate the policy, and return its next
+        """
+        Learn from (state, reward), evaluate the policy, and return its next
         action.
 
         The reward belongs to the previous transition. A terminal percept ends
         the episode after that transition is learned and returns no action.
         """
-        ...
+        s_prime, reward = percept
+        if s_prime not in self.U:
+            self.U[s_prime] = 0
+
+        if self.s is not None:
+            self.N[(self.s, self.a), s_prime] += 1
+            self.mdp.R[(self.s, self.a, s_prime)] = reward
+            self.mdp.A[self.s].add(self.a)
+            self.mdp.P[(self.s, self.a)] = self.normalize(self.N[(self.s, self.a)])
+            self.U = self.policy_evaluation(fixed_policy(self.s), self.U, self.mdp)
+            self.s, self.a = s_prime, fixed_policy(s_prime)
+
+        return self.a
 
     def act(self, percept: tuple[State, float, bool]) -> Action | None:
         """
@@ -105,12 +125,12 @@ class PassiveADPAgent(Generic[State, Action]):
     def policy_evaluation(
         policy: Callable[[State], Action],
         utilities: dict[State, float],
-        mdp: LearnedMDP[State, Action],
+        mdp: MDP[State, Action],
     ) -> dict[State, float]:
         """
         Return utilities satisfying the fixed-policy Bellman equations.
         """
-        ...
+        pass
 
     def reset_episode(self) -> None:
         """
