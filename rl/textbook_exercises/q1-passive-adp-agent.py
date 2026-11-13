@@ -304,7 +304,7 @@ def train(
     height: int = 3,
     max_steps: int = 256,
 ) -> Path:
-    """Replace outputs for this grid size, preserving runs for other dimensions."""
+    """Reset this size's outputs, recording episodes 1–10 and later checkpoints."""
     if episodes < 1 or checkpoint_every < 1:
         raise ValueError("episodes and checkpoint_every must be positive")
     # Validate the environment before replacing any previous outputs.
@@ -339,7 +339,7 @@ def train(
                 agent.reset_episode()
                 state = tuple(env.agent_pos)
                 action = agent.act((state, 0.0, False))
-                checkpoint = episode == 1 or episode % checkpoint_every == 0
+                checkpoint = episode <= 10 or episode % checkpoint_every == 0
                 writer = None
                 steps = 0
                 environment_return = 0.0
