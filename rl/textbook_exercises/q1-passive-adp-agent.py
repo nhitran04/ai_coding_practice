@@ -1,6 +1,7 @@
 """A MiniGrid environment with a 4-column by 3-row playable area."""
 
 from dataclasses import dataclass, field
+import random
 from typing import Callable, Generic, Hashable, TypeVar
 
 from minigrid.core.actions import Actions
@@ -15,21 +16,13 @@ State = TypeVar("State", bound=Hashable)
 Action = TypeVar("Action", bound=Hashable)
 
 
-def fixed_policy(state: tuple[int, int, int]) -> Actions:
-    """
-    Map (x, y, direction) to an action toward the goal at (4, 1).
-    """
-    x, y, direction = state
+def random_policy(state: tuple[int, int, int]) -> dict[Actions, float]:
+    """Return a uniform distribution over movement actions; no actions at the
+    goal."""
+    x, y, _ = state
     if (x, y) == (4, 1):
-        return Actions.done
-
-    # MiniGrid directions: 0 = right, 1 = down, 2 = left, 3 = up.
-    desired_direction = 0 if x < 4 else 3
-    if direction == desired_direction:
-        return Actions.forward
-    if (desired_direction - direction) % 4 == 1:
-        return Actions.right
-    return Actions.left
+        return {}
+    return {Actions.left: 1 / 3, Actions.right: 1 / 3, Actions.forward: 1 / 3}
 
 
 @dataclass
@@ -58,18 +51,18 @@ class PassiveADPAgent(Generic[State, Action]):
 
     def __init__(
         self,
-        policy: Callable[[State], Action],
+        policy: Callable[[State], dict[Action, float]],
         discount_factor: float = 0.99,
     ) -> None:
         """
-        Store the fixed policy and initialize the MDP representation and
-        persistent tables.
+        Store the stationary stochastic policy and initialize the MDP
+        representation and persistent tables.
         """
         # A discount below one guarantees a unique discounted Bellman solution.
         if not 0.0 <= discount_factor < 1.0:
             raise ValueError("discount_factor must be at least 0 and less than 1")
 
-        self.pi = policy  # fixed policy
+        self.pi = policy  # maps each state to action probabilities
         self.mdp: MDP[State, Action] = MDP(discount_factor)  # MDP
         self.U: dict[State, float] = {}  # table of utilities for states
 
@@ -98,13 +91,25 @@ class PassiveADPAgent(Generic[State, Action]):
             self.U[s_prime] = 0
 
         if self.s is not None:
-            self.N[(self.s, self.a), s_prime] += 1
+            assert self.a is not None
+            state_action = (self.s, self.a)
+            outcomes = self.N.setdefault(state_action, {})
+            outcomes[s_prime] = outcomes.get(s_prime, 0) + 1
             self.mdp.R[(self.s, self.a, s_prime)] = reward
-            self.mdp.A[self.s].add(self.a)
-            self.mdp.P[(self.s, self.a)] = self.normalize(self.N[(self.s, self.a)])
-            self.U = self.policy_evaluation(fixed_policy(self.s), self.U, self.mdp)
-            self.s, self.a = s_prime, fixed_policy(s_prime)
+            self.mdp.A.setdefault(self.s, set()).add(self.a)
+            self.mdp.P[state_action] = self.normalize(outcomes)
+            self.U = self.policy_evaluation(self.pi, self.U, self.mdp)
 
+        if terminal:
+            self.reset_episode()
+            return None
+
+        action_probabilities = self.pi(s_prime)
+        self.s = s_prime
+        self.a = random.choices(
+            list(action_probabilities),
+            weights=list(action_probabilities.values()),
+        )[0]
         return self.a
 
     def act(self, percept: tuple[State, float, bool]) -> Action | None:
@@ -119,25 +124,54 @@ class PassiveADPAgent(Generic[State, Action]):
         """
         Convert outcome counts into probabilities summing to one.
         """
-        ...
+        total = sum(outcome_counts.values())
+        return {state: count / total for state, count in outcome_counts.items()}
 
     @staticmethod
     def policy_evaluation(
-        policy: Callable[[State], Action],
+        policy: Callable[[State], dict[Action, float]],
         utilities: dict[State, float],
         mdp: MDP[State, Action],
     ) -> dict[State, float]:
         """
         Return utilities satisfying the fixed-policy Bellman equations.
         """
-        pass
+        threshold = 0.001
+        V = utilities.copy()
+
+        while True:
+            delta = 0.0
+            for state in V:
+                v = V[state]
+
+                for action, action_probability in policy(state).items():
+                    for successor, probability in mdp.P.get(
+                        (state, action), {}
+                    ).items():
+                        V[state] = sum(
+                            action_probability
+                            * sum(
+                                probability
+                                * (
+                                    mdp.R[(state, action, successor)]
+                                    * mdp.gamma
+                                    * V[successor]
+                                )
+                            )
+                        )
+
+                delta = max(delta, abs(v - V[state]))
+
+            if delta < threshold:
+                return V
 
     def reset_episode(self) -> None:
         """
         Clear the previous state and action while retaining the learned model
         and utilities.
         """
-        ...
+        self.s = None
+        self.a = None
 
 
 class SimpleEnv(MiniGridEnv):
