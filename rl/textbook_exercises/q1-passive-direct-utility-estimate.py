@@ -84,7 +84,8 @@ class PassiveDirectUtilityAgent(Generic[State, Action]):
 
     def act(self, percept: tuple[State, float, bool]) -> Action | None:
         # TODO: Adapt (state, reward, terminal) to the learning method.
-        pass
+        state, reward, terminal = percept
+        return self.passive_direct_utility_learning((state, reward), terminal=terminal)
 
     def update_utilities(self) -> None:
         # TODO: Estimate utilities from discounted returns in the episode
