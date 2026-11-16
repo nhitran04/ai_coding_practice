@@ -37,15 +37,29 @@ class Move(IntEnum):
     NORTH = 3
 
 
-def random_policy(
+def fixed_policy(
     state: tuple[int, int],
     *,
     goal: tuple[int, int] = (4, 1),
 ) -> dict[Move, float]:
-    """Return equal probabilities for cardinal moves; no actions at the goal."""
-    if state == goal:
+    """Move horizontally toward the goal, then vertically; stop at the goal.
+
+    Return a probability of one for the selected action. The policy stays
+    unchanged while the ADP agent learns its model and utilities.
+    """
+    x, y = state
+    goal_x, goal_y = goal
+    if x < goal_x:
+        action = Move.EAST
+    elif x > goal_x:
+        action = Move.WEST
+    elif y > goal_y:
+        action = Move.NORTH
+    elif y < goal_y:
+        action = Move.SOUTH
+    else:
         return {}
-    return {move: 0.25 for move in Move}
+    return {action: 1.0}
 
 
 @dataclass
@@ -78,7 +92,7 @@ class PassiveADPAgent(Generic[State, Action]):
         discount_factor: float = 0.99,
     ) -> None:
         """
-        Store the stationary stochastic policy and initialize the MDP
+        Store the fixed policy and initialize the MDP
         representation and persistent tables.
         """
         # A discount below one guarantees a unique discounted Bellman solution.
@@ -320,7 +334,7 @@ def train(
     heatmaps.mkdir(parents=True, exist_ok=True)
 
     random.seed(seed)
-    agent = PassiveADPAgent(partial(random_policy, goal=env.goal_pos))
+    agent = PassiveADPAgent(partial(fixed_policy, goal=env.goal_pos))
     try:
         with (output_dir / "episodes.csv").open("w", newline="") as metrics:
             log = csv.writer(metrics)
@@ -403,7 +417,7 @@ def main():
     """Run configurable passive ADP training and report the artifact
     directory."""
     parser = argparse.ArgumentParser(
-        description="Train passive ADP with position-only states and uniform cardinal moves."
+        description="Train passive ADP with position-only states and a fixed horizontal-then-vertical policy."
     )
     parser.add_argument("--episodes", type=int, default=100)
     parser.add_argument("--checkpoint-every", type=int, default=10)

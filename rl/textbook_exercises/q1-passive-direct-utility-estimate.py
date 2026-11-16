@@ -91,7 +91,17 @@ class PassiveDirectUtilityAgent(Generic[State, Action]):
         # TODO: Estimate utilities from discounted returns in the episode
         # history. TODO: Choose and document first-visit or every-visit
         # estimation.
-        pass
+        discounted_return = 0
+
+        for state, arrival_reward in reversed(self.episode_history):
+            if state not in self.N:
+                self.N[state] = 0
+                self.U[state] = 0
+
+            self.N[state] += 1
+            self.U[state] += (discounted_return - self.U[state]) / self.N[state]
+
+            discounted_return = arrival_reward + self.gamma * discounted_return
 
     def reset_episode(self) -> None:
         # TODO: Clear episode history while retaining learned utilities and
