@@ -106,7 +106,7 @@ class PassiveDirectUtilityAgent(Generic[State, Action]):
     def reset_episode(self) -> None:
         # TODO: Clear episode history while retaining learned utilities and
         # counts.
-        pass
+        self.episode_history = []
 
 
 class SimpleEnv(MiniGridEnv):
