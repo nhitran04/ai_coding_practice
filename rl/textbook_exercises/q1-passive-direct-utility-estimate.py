@@ -1,5 +1,7 @@
 """MiniGrid setup for passive direct utility estimation."""
 
+import random
+
 from enum import IntEnum
 from pathlib import Path
 from typing import Callable, Generic, Hashable, TypeVar
@@ -80,7 +82,22 @@ class PassiveDirectUtilityAgent(Generic[State, Action]):
         # transition). TODO: On termination, learn from the completed episode
         # and return None. TODO: Otherwise select an action using the fixed
         # policy.
-        pass
+        state, arrival_reward = percept
+        self.episode_history.append((state, arrival_reward))
+
+        if terminal:
+            self.update_utilities(self)
+            self.reset_episode(self)
+            return None
+
+        action_probabilities = self.pi(state)
+        action = random.choices(
+            list(action_probabilities.keys()),
+            weights=list(action_probabilities.values()),
+            k=1,
+        )
+
+        return action
 
     def act(self, percept: tuple[State, float, bool]) -> Action | None:
         # TODO: Adapt (state, reward, terminal) to the learning method.
