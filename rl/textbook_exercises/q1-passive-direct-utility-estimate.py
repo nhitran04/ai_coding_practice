@@ -1,17 +1,28 @@
 """MiniGrid setup for passive direct utility estimation."""
 
+import argparse
+import csv
 import random
+import shutil
 
 from enum import IntEnum
+from functools import partial
 from pathlib import Path
 from typing import Callable, Generic, Hashable, TypeVar
 
+import imageio.v2 as imageio
+import matplotlib
+import numpy as np
 from gymnasium.spaces import Discrete
 from minigrid.core.actions import Actions
 from minigrid.core.grid import Grid
 from minigrid.core.mission import MissionSpace
 from minigrid.core.world_object import Goal
 from minigrid.minigrid_env import MiniGridEnv
+
+
+matplotlib.use("Agg")
+import matplotlib.pyplot as plt
 
 
 State = TypeVar("State", bound=Hashable)
@@ -78,16 +89,13 @@ class PassiveDirectUtilityAgent(Generic[State, Action]):
         *,
         terminal: bool = False,
     ) -> Action | None:
-        # TODO: Record the state and reward (reward belongs to the prior
-        # transition). TODO: On termination, learn from the completed episode
-        # and return None. TODO: Otherwise select an action using the fixed
-        # policy.
+        """Record a percept; learn on termination or choose the next action."""
         state, arrival_reward = percept
         self.episode_history.append((state, arrival_reward))
 
         if terminal:
-            self.update_utilities(self)
-            self.reset_episode(self)
+            self.update_utilities()
+            self.reset_episode()
             return None
 
         action_probabilities = self.pi(state)
@@ -95,19 +103,17 @@ class PassiveDirectUtilityAgent(Generic[State, Action]):
             list(action_probabilities.keys()),
             weights=list(action_probabilities.values()),
             k=1,
-        )
+        )[0]
 
         return action
 
     def act(self, percept: tuple[State, float, bool]) -> Action | None:
-        # TODO: Adapt (state, reward, terminal) to the learning method.
+        """Adapt a (state, reward, terminal) percept to the learning method."""
         state, reward, terminal = percept
         return self.passive_direct_utility_learning((state, reward), terminal=terminal)
 
     def update_utilities(self) -> None:
-        # TODO: Estimate utilities from discounted returns in the episode
-        # history. TODO: Choose and document first-visit or every-visit
-        # estimation.
+        """Average every-visit discounted returns from a completed episode."""
         discounted_return = 0
 
         for state, arrival_reward in reversed(self.episode_history):
@@ -121,8 +127,8 @@ class PassiveDirectUtilityAgent(Generic[State, Action]):
             discounted_return = arrival_reward + self.gamma * discounted_return
 
     def reset_episode(self) -> None:
-        # TODO: Clear episode history while retaining learned utilities and
-        # counts.
+        """Clear episode history while retaining learned utilities and
+        counts."""
         self.episode_history = []
 
 
@@ -197,8 +203,39 @@ def save_heatmap(
     width: int = 4,
     height: int = 3,
 ) -> None:
-    # TODO: Plot position utilities, mark unseen cells, and save the figure.
-    pass
+    """Save one utility per (x, y) cell; gray cells are unobserved."""
+    fig, ax = plt.subplots(
+        figsize=(max(7, width * 0.8), max(5, height * 0.7)), constrained_layout=True
+    )
+    cmap = plt.get_cmap("viridis").copy()
+    cmap.set_bad("lightgray")
+    values = np.full((height, width), np.nan)
+    for y in range(1, height + 1):
+        for x in range(1, width + 1):
+            if (x, y) in agent.U:
+                values[y - 1, x - 1] = agent.U[x, y]
+    plot = ax.imshow(values, cmap=cmap, vmin=0, vmax=1)
+    ax.set(xlabel="x", ylabel="y")
+    ax.set_xticks(range(width), labels=range(1, width + 1))
+    ax.set_yticks(range(height), labels=range(1, height + 1))
+    for y in range(height):
+        for x in range(width):
+            value = values[y, x]
+            text = "unseen" if np.isnan(value) else f"{value:.3f}"
+            if (x, y) == (width - 1, 0):
+                text = "Goal\n" + text
+            ax.text(
+                x,
+                y,
+                text,
+                ha="center",
+                va="center",
+                color="white" if not np.isnan(value) and value < 0.5 else "black",
+            )
+    fig.colorbar(plot, ax=ax, label="Estimated discounted return")
+    ax.set_title(f"{width}×{height} utilities after episode {episode} (gray = unseen)")
+    fig.savefig(destination, dpi=150)
+    plt.close(fig)
 
 
 def train(
@@ -210,15 +247,149 @@ def train(
     height: int = 3,
     max_steps: int = 256,
 ) -> Path:
-    # TODO: Create the environment and agent with fixed_policy bound to
-    # env.goal_pos. TODO: Run episodes, passing position, reward, and terminal
-    # status to the agent. TODO: Choose consistent learning rewards and document
-    # how truncation is handled. TODO: Record metrics, videos, and utility
-    # heatmaps at checkpoints. TODO: Close resources and return the output
-    # directory.
-    pass
+    """Reset this size's outputs, recording episodes 1–10 and later
+    checkpoints."""
+    if episodes < 1 or checkpoint_every < 1:
+        raise ValueError("episodes and checkpoint_every must be positive")
+    # Validate the environment before replacing any previous outputs.
+    env = SimpleEnv(
+        width=width, height=height, max_steps=max_steps, render_mode="rgb_array"
+    )
+    output_root = (
+        Path(output_dir)
+        if output_dir is not None
+        else Path(__file__).parent / "outputs" / "direct-utility"
+    )
+    output_dir = output_root / f"{width}x{height}"
+    videos = output_dir / "videos"
+    heatmaps = output_dir / "heatmaps"
+    for directory in (videos, heatmaps):
+        if directory.exists():
+            shutil.rmtree(directory)
+    videos.mkdir(parents=True, exist_ok=True)
+    heatmaps.mkdir(parents=True, exist_ok=True)
+
+    random.seed(seed)
+    agent = PassiveDirectUtilityAgent(partial(fixed_policy, goal=env.goal_pos))
+    try:
+        with (output_dir / "episodes.csv").open("w", newline="") as metrics:
+            log = csv.writer(metrics)
+            log.writerow(
+                [
+                    "episode",
+                    "steps",
+                    "terminated",
+                    "truncated",
+                    "environment_return",
+                    "learning_return",
+                ]
+            )
+            for episode in range(1, episodes + 1):
+                env.reset(seed=seed + episode - 1)
+                agent.reset_episode()
+                state = tuple(env.agent_pos)
+                action = agent.act((state, 0.0, False))
+                checkpoint = episode <= 10 or episode % checkpoint_every == 0
+                writer = None
+                steps = 0
+                environment_return = 0.0
+                learning_return = 0.0
+                try:
+                    if checkpoint:
+                        writer = imageio.get_writer(
+                            videos / f"episode_{episode:04d}.mp4",
+                            fps=10,
+                            codec="libx264",
+                            macro_block_size=1,
+                        )
+                        writer.append_data(env.render())
+                    while True:
+                        _, reward, terminated, truncated, _ = env.step(action)
+                        steps += 1
+                        environment_return += reward
+                        # The native reward depends on elapsed time. Use
+                        # stationary transition rewards for the (x, y) state
+                        # model.
+                        learning_reward = float(terminated)
+                        learning_return += learning_reward
+                        state = tuple(env.agent_pos)
+                        # Only completed episodes supply full Monte Carlo
+                        # returns. Discard truncated histories rather than
+                        # treating the time limit as a terminal state with zero
+                        # future return.
+                        if not truncated or terminated:
+                            action = agent.act((state, learning_reward, terminated))
+                        if writer is not None:
+                            writer.append_data(env.render())
+                        if terminated or truncated:
+                            agent.reset_episode()
+                            break
+                finally:
+                    if writer is not None:
+                        writer.close()
+                log.writerow(
+                    [
+                        episode,
+                        steps,
+                        terminated,
+                        truncated,
+                        environment_return,
+                        learning_return,
+                    ]
+                )
+                if checkpoint:
+                    save_heatmap(
+                        agent,
+                        episode,
+                        heatmaps / f"episode_{episode:04d}.png",
+                        width,
+                        height,
+                    )
+                    metrics.flush()
+                    print(
+                        f"Episode {episode}: {steps} steps; goal={terminated}; saved video and heatmap",
+                        flush=True,
+                    )
+    finally:
+        env.close()
+    return output_dir
 
 
-def main() -> None:
-    # TODO: Parse command-line options and invoke train with those options.
-    pass
+def main():
+    """Run configurable passive direct utility training and report the artifact
+    directory."""
+    parser = argparse.ArgumentParser(
+        description="Train passive direct utility estimation with position-only states and a fixed horizontal-then-vertical policy."
+    )
+    parser.add_argument("--episodes", type=int, default=100)
+    parser.add_argument("--checkpoint-every", type=int, default=10)
+    parser.add_argument(
+        "--output-dir",
+        type=Path,
+        help="Output root; runs are stored in WIDTHxHEIGHT subfolders",
+    )
+    parser.add_argument(
+        "--width", type=int, default=4, help="Playable columns, excluding walls"
+    )
+    parser.add_argument(
+        "--height", type=int, default=3, help="Playable rows, excluding walls"
+    )
+    parser.add_argument(
+        "--max-steps", type=int, default=256, help="Step limit per episode"
+    )
+    parser.add_argument("--seed", type=int, default=42)
+    args = parser.parse_args()
+    output_dir = train(
+        episodes=args.episodes,
+        checkpoint_every=args.checkpoint_every,
+        output_dir=args.output_dir,
+        seed=args.seed,
+        width=args.width,
+        height=args.height,
+        max_steps=args.max_steps,
+    )
+    print(f"Artifacts saved to {output_dir.resolve()}")
+
+
+if __name__ == "__main__":
+    main()

@@ -323,7 +323,7 @@ def train(
         raise ValueError("episodes and checkpoint_every must be positive")
     # Validate the environment before replacing any previous outputs.
     env = SimpleEnv(width=width, height=height, max_steps=max_steps, render_mode="rgb_array")
-    output_root = Path(output_dir) if output_dir is not None else Path(__file__).parent / "outputs"
+    output_root = Path(output_dir) if output_dir is not None else Path(__file__).parent / "outputs" / "passive-adp"
     output_dir = output_root / f"{width}x{height}"
     videos = output_dir / "videos"
     heatmaps = output_dir / "heatmaps"
