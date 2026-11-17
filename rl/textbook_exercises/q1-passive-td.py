@@ -69,10 +69,10 @@ class PassiveTDAgent(Generic[State, Action]):
         policy: Callable[[State], dict[Action, float]],
         discount_factor: float = 0.99,
     ) -> None:
-        # TODO: Validate and store the discount factor and fixed policy.
-        # TODO: Initialize utility estimates U and state update counts N.
-        # TODO: Initialize the previous state s to None.
-        pass
+        self.pi = policy
+        self.s: State | None = None
+        self.U: dict[State, float] = {}
+        self.N: dict[State, int] = {}
 
     def passive_td_learning(
         self,
@@ -81,12 +81,12 @@ class PassiveTDAgent(Generic[State, Action]):
         terminal: bool = False,
     ) -> Action | None:
         # TODO: Unpack the current state and reward from the prior transition.
-        # TODO: Initialize the utility of a newly observed state.
-        # TODO: If a previous state exists, increment its update count and
-        # update its utility using the reward and successor utility (TD(0)).
-        # TODO: Use zero successor value on true termination; then reset
-        # episode state and return None after processing the final transition.
-        # TODO: Otherwise remember this state and sample an action from pi.
+        # TODO: Initialize the utility of a newly observed state. TODO: If a
+        # previous state exists, increment its update count and update its
+        # utility using the reward and successor utility (TD(0)). TODO: Use zero
+        # successor value on true termination; then reset episode state and
+        # return None after processing the final transition. TODO: Otherwise
+        # remember this state and sample an action from pi.
         pass
 
     def act(self, percept: tuple[State, float, bool]) -> Action | None:
@@ -167,7 +167,6 @@ class SimpleEnv(MiniGridEnv):
         self.mission = self._gen_mission()
 
 
-
 def save_heatmap(
     agent: PassiveTDAgent,
     episode: int,
@@ -175,7 +174,8 @@ def save_heatmap(
     width: int = 4,
     height: int = 3,
 ) -> None:
-    # TODO: Plot utilities by position, mark unseen cells and the goal, and save.
+    # TODO: Plot utilities by position, mark unseen cells and the goal, and
+    # save.
     pass
 
 
@@ -188,20 +188,20 @@ def train(
     height: int = 3,
     max_steps: int = 256,
 ) -> Path:
-    # TODO: Validate options, create SimpleEnv, and seed action sampling.
-    # TODO: Create PassiveTDAgent with fixed_policy bound to env.goal_pos.
-    # TODO: Default outputs to outputs/passive-td/WIDTHxHEIGHT.
-    # TODO: Reset the environment and agent episode state for each episode.
-    # TODO: Pass position, reward, and termination status to agent.act each step.
-    # TODO: Use stationary learning rewards, as in the passive ADP script.
-    # TODO: On truncation, learn the last transition with its successor value,
-    # then reset episode state without marking that successor as terminal.
-    # TODO: Save videos and heatmaps for episodes 1-10 and later checkpoints.
-    # TODO: Write episode metrics to CSV, close resources, and return the path.
+    # TODO: Validate options, create SimpleEnv, and seed action sampling. TODO:
+    # Create PassiveTDAgent with fixed_policy bound to env.goal_pos. TODO:
+    # Default outputs to outputs/passive-td/WIDTHxHEIGHT. TODO: Reset the
+    # environment and agent episode state for each episode. TODO: Pass position,
+    # reward, and termination status to agent.act each step. TODO: Use
+    # stationary learning rewards, as in the passive ADP script. TODO: On
+    # truncation, learn the last transition with its successor value, then reset
+    # episode state without marking that successor as terminal. TODO: Save
+    # videos and heatmaps for episodes 1-10 and later checkpoints. TODO: Write
+    # episode metrics to CSV, close resources, and return the path.
     pass
 
 
 def main() -> None:
-    # TODO: Parse the same command-line options as the passive ADP script.
-    # TODO: Call train and print the resulting artifact directory.
+    # TODO: Parse the same command-line options as the passive ADP script. TODO:
+    # Call train and print the resulting artifact directory.
     pass

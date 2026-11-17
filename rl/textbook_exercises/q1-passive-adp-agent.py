@@ -1,4 +1,5 @@
-"""Passive ADP on configurable MiniGrids with position-only states and cardinal moves."""
+"""Passive ADP on configurable MiniGrids with position-only states and cardinal
+moves."""
 
 import argparse
 import csv
@@ -92,8 +93,8 @@ class PassiveADPAgent(Generic[State, Action]):
         discount_factor: float = 0.99,
     ) -> None:
         """
-        Store the fixed policy and initialize the MDP
-        representation and persistent tables.
+        Store the fixed policy and initialize the MDP representation and
+        persistent tables.
         """
         # A discount below one guarantees a unique discounted Bellman solution.
         if not 0.0 <= discount_factor < 1.0:
@@ -128,7 +129,6 @@ class PassiveADPAgent(Generic[State, Action]):
             self.U[s_prime] = 0
 
         if self.s is not None:
-            assert self.a is not None
             state_action = (self.s, self.a)
             outcomes = self.N.setdefault(state_action, {})
             outcomes[s_prime] = outcomes.get(s_prime, 0) + 1
@@ -218,10 +218,13 @@ class SimpleEnv(MiniGridEnv):
 
     def __init__(self, width: int = 4, height: int = 3, max_steps: int = 256, **kwargs):
         """
-        Configure playable dimensions (excluding walls) and the episode step limit.
+        Configure playable dimensions (excluding walls) and the episode step
+        limit.
         """
         if width < 1 or height < 1 or width * height == 1:
-            raise ValueError("Playable dimensions must be positive with at least two cells")
+            raise ValueError(
+                "Playable dimensions must be positive with at least two cells"
+            )
         if max_steps < 1:
             raise ValueError("max_steps must be positive")
         self.playable_width = width
@@ -277,7 +280,9 @@ def save_heatmap(
     height: int = 3,
 ) -> None:
     """Save one utility per (x, y) cell; gray cells are unobserved."""
-    fig, ax = plt.subplots(figsize=(max(7, width * 0.8), max(5, height * 0.7)), constrained_layout=True)
+    fig, ax = plt.subplots(
+        figsize=(max(7, width * 0.8), max(5, height * 0.7)), constrained_layout=True
+    )
     cmap = plt.get_cmap("viridis").copy()
     cmap.set_bad("lightgray")
     values = np.full((height, width), np.nan)
@@ -318,12 +323,19 @@ def train(
     height: int = 3,
     max_steps: int = 256,
 ) -> Path:
-    """Reset this size's outputs, recording episodes 1–10 and later checkpoints."""
+    """Reset this size's outputs, recording episodes 1–10 and later
+    checkpoints."""
     if episodes < 1 or checkpoint_every < 1:
         raise ValueError("episodes and checkpoint_every must be positive")
     # Validate the environment before replacing any previous outputs.
-    env = SimpleEnv(width=width, height=height, max_steps=max_steps, render_mode="rgb_array")
-    output_root = Path(output_dir) if output_dir is not None else Path(__file__).parent / "outputs" / "passive-adp"
+    env = SimpleEnv(
+        width=width, height=height, max_steps=max_steps, render_mode="rgb_array"
+    )
+    output_root = (
+        Path(output_dir)
+        if output_dir is not None
+        else Path(__file__).parent / "outputs" / "passive-adp"
+    )
     output_dir = output_root / f"{width}x{height}"
     videos = output_dir / "videos"
     heatmaps = output_dir / "heatmaps"
@@ -401,7 +413,11 @@ def train(
                 )
                 if checkpoint:
                     save_heatmap(
-                        agent, episode, heatmaps / f"episode_{episode:04d}.png", width, height
+                        agent,
+                        episode,
+                        heatmaps / f"episode_{episode:04d}.png",
+                        width,
+                        height,
                     )
                     metrics.flush()
                     print(
@@ -421,16 +437,30 @@ def main():
     )
     parser.add_argument("--episodes", type=int, default=100)
     parser.add_argument("--checkpoint-every", type=int, default=10)
-    parser.add_argument("--output-dir", type=Path, help="Output root; runs are stored in WIDTHxHEIGHT subfolders")
-    parser.add_argument("--width", type=int, default=4, help="Playable columns, excluding walls")
-    parser.add_argument("--height", type=int, default=3, help="Playable rows, excluding walls")
-    parser.add_argument("--max-steps", type=int, default=256, help="Step limit per episode")
+    parser.add_argument(
+        "--output-dir",
+        type=Path,
+        help="Output root; runs are stored in WIDTHxHEIGHT subfolders",
+    )
+    parser.add_argument(
+        "--width", type=int, default=4, help="Playable columns, excluding walls"
+    )
+    parser.add_argument(
+        "--height", type=int, default=3, help="Playable rows, excluding walls"
+    )
+    parser.add_argument(
+        "--max-steps", type=int, default=256, help="Step limit per episode"
+    )
     parser.add_argument("--seed", type=int, default=42)
     args = parser.parse_args()
     output_dir = train(
-        episodes=args.episodes, checkpoint_every=args.checkpoint_every,
-        output_dir=args.output_dir, seed=args.seed,
-        width=args.width, height=args.height, max_steps=args.max_steps,
+        episodes=args.episodes,
+        checkpoint_every=args.checkpoint_every,
+        output_dir=args.output_dir,
+        seed=args.seed,
+        width=args.width,
+        height=args.height,
+        max_steps=args.max_steps,
     )
     print(f"Artifacts saved to {output_dir.resolve()}")
 
