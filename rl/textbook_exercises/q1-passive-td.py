@@ -141,8 +141,8 @@ class PassiveTDAgent(Generic[State, Action]):
         # probability dictionary, so sample one action rather than returning it.
         action_probabilities = self.pi(s_prime)
         self.a = random.choices(
-            list(action_probabilities), weights=list(action_probabilities.values())[0]
-        )
+            list(action_probabilities), weights=list(action_probabilities.values())
+        )[0]
         return self.a
 
     def act(self, percept: tuple[State, float, bool]) -> Action | None:
