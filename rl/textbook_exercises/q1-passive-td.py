@@ -1,5 +1,6 @@
 """Passive temporal-difference (TD(0)) learning on configurable MiniGrids."""
 
+import argparse
 import csv
 import random
 import shutil
@@ -92,6 +93,7 @@ class PassiveTDAgent(Generic[State, Action]):
         self.U: dict[State, float] = {}
         # N_s in the textbook: each value is an integer count, initially zero.
         self.N: dict[State, int] = {}
+        self.gamma = discount_factor
 
     def passive_td_learning(
         self,
@@ -102,39 +104,55 @@ class PassiveTDAgent(Generic[State, Action]):
         """Process (s_prime, reward) and return an action under the fixed
         policy."""
         # TODO 1: Unpack percept into s_prime and reward (the textbook's r).
+        s_prime, reward = percept
 
         # TODO 2: If s_prime is new, initialize U[s_prime] to zero.
+        if s_prime not in self.U:
+            self.U[s_prime] = 0
 
         # TODO 3: If the previous state s is not None: Initialize its integer
-        #   count N[s] to zero if absent, then increment. Obtain alpha(N[s])
-        #   using self.learning_rate. Apply the textbook update to U[s]: U[s] <-
-        #   U[s] + alpha(N[s]) * (reward + gamma * U[s_prime] - U[s]). For true
-        #   termination, use zero for the successor utility.
+        #   count N[s] to zero if absent, then increment. Choose and document a
+        #   step-size schedule alpha(n), evaluated at the updated N[s]. The
+        #   textbook leaves the schedule unspecified; for convergence, choose
+        #   one whose step sizes sum to infinity and whose squares have a finite
+        #   sum. Apply the textbook update to U[s]: U[s] <- U[s] + alpha(N[s]) *
+        #   (reward + gamma * U[s_prime] - U[s]). For true termination, use zero
+        #   for the successor utility.
+        if self.s is not None:
+            if self.s not in self.N:
+                self.N[self.s] = 0
+            self.N[self.s] += 1
+            self.alpha = 1.0 / self.N[self.s]
+            self.U[self.s] = self.U[self.s] + self.alpha * (
+                reward + (self.gamma * self.U[s_prime] - self.U[self.s])
+            )
 
         # TODO 4: MiniGrid episode handling: after learning the final
         # transition, reset the previous state and return None if terminal is
         # True.
+        if terminal:
+            self.reset_episode()
+            return None
 
         # TODO 5: Remember s_prime as the previous state s.
+        self.s = s_prime
 
         # TODO 6: Return an action under pi(s_prime). Here pi returns an action
         # probability dictionary, so sample one action rather than returning it.
-        pass
+        action_probabilities = self.pi(s_prime)
+        self.a = random.choices(
+            list(action_probabilities), weights=list(action_probabilities.values())[0]
+        )
+        return self.a
 
     def act(self, percept: tuple[State, float, bool]) -> Action | None:
         # TODO: Adapt (state, reward, terminal) to passive_td_learning.
-        pass
-
-    @staticmethod
-    def learning_rate(update_count: int) -> float:
-        # TODO: Implement the textbook's alpha(n) for a positive update_count.
-        # Choose a schedule with sum(alpha(n)) infinite and sum(alpha(n)^2)
-        # finite.
-        pass
+        state, reward, terminal = percept
+        return self.passive_td_learning((state, reward), terminal=terminal)
 
     def reset_episode(self) -> None:
         # TODO: Clear the previous state while retaining utilities and counts.
-        pass
+        self.s = None
 
 
 class SimpleEnv(MiniGridEnv):
@@ -364,6 +382,40 @@ def train(
 
 
 def main() -> None:
-    # TODO: Parse the same command-line options as the passive ADP script. TODO:
-    # Call train and print the resulting artifact directory.
-    pass
+    """Run configurable passive TD(0) training and report the artifact
+    directory."""
+    parser = argparse.ArgumentParser(
+        description="Train passive TD(0) with position-only states and a fixed horizontal-then-vertical policy."
+    )
+    parser.add_argument("--episodes", type=int, default=100)
+    parser.add_argument("--checkpoint-every", type=int, default=10)
+    parser.add_argument(
+        "--output-dir",
+        type=Path,
+        help="Output root; runs are stored in WIDTHxHEIGHT subfolders",
+    )
+    parser.add_argument(
+        "--width", type=int, default=4, help="Playable columns, excluding walls"
+    )
+    parser.add_argument(
+        "--height", type=int, default=3, help="Playable rows, excluding walls"
+    )
+    parser.add_argument(
+        "--max-steps", type=int, default=256, help="Step limit per episode"
+    )
+    parser.add_argument("--seed", type=int, default=42)
+    args = parser.parse_args()
+    output_dir = train(
+        episodes=args.episodes,
+        checkpoint_every=args.checkpoint_every,
+        output_dir=args.output_dir,
+        seed=args.seed,
+        width=args.width,
+        height=args.height,
+        max_steps=args.max_steps,
+    )
+    print(f"Artifacts saved to {output_dir.resolve()}")
+
+
+if __name__ == "__main__":
+    main()
