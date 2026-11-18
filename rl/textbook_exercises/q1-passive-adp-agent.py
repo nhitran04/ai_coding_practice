@@ -130,10 +130,18 @@ class PassiveADPAgent(Generic[State, Action]):
 
         if self.s is not None:
             state_action = (self.s, self.a)
-            outcomes = self.N.setdefault(state_action, {})
+
+            if state_action not in self.N:
+                self.N[state_action] = {}
+            outcomes = self.N[state_action]
+
             outcomes[s_prime] = outcomes.get(s_prime, 0) + 1
             self.mdp.R[(self.s, self.a, s_prime)] = reward
-            self.mdp.A.setdefault(self.s, set()).add(self.a)
+
+            if self.s not in self.mdp.A:
+                self.mdp.A[self.s] = set()
+            self.mdp.A[self.s].add(self.a)
+
             self.mdp.P[state_action] = self.normalize(outcomes)
             self.U = self.policy_evaluation(self.pi, self.U, self.mdp)
 

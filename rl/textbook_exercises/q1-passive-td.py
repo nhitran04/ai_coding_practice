@@ -1,15 +1,27 @@
 """Passive temporal-difference (TD(0)) learning on configurable MiniGrids."""
 
+import csv
+import random
+import shutil
+
 from enum import IntEnum
+from functools import partial
 from pathlib import Path
 from typing import Callable, Generic, Hashable, TypeVar
 
+import imageio.v2 as imageio
+import matplotlib
+import numpy as np
 from gymnasium.spaces import Discrete
 from minigrid.core.actions import Actions
 from minigrid.core.grid import Grid
 from minigrid.core.mission import MissionSpace
 from minigrid.core.world_object import Goal
 from minigrid.minigrid_env import MiniGridEnv
+
+
+matplotlib.use("Agg")
+import matplotlib.pyplot as plt
 
 
 State = TypeVar("State", bound=Hashable)
@@ -62,16 +74,23 @@ def fixed_policy(
 
 
 class PassiveTDAgent(Generic[State, Action]):
-    """Learn the utilities of a fixed policy with one-step TD(0) updates."""
+    """Skeleton for AIMA Chapter 23, Figure 23.4: PASSIVE-TD-LEARNER.
+
+    pi corresponds to the fixed policy; s is the previous state; U stores
+    utilities; N corresponds to the textbook's state-frequency table N_s.
+    MiniGrid supplies arrival rewards and explicit episode termination.
+    """
 
     def __init__(
         self,
         policy: Callable[[State], dict[Action, float]],
         discount_factor: float = 0.99,
     ) -> None:
+        # TODO: Validate discount_factor and store it as self.gamma.
         self.pi = policy
         self.s: State | None = None
         self.U: dict[State, float] = {}
+        # N_s in the textbook: each value is an integer count, initially zero.
         self.N: dict[State, int] = {}
 
     def passive_td_learning(
@@ -80,13 +99,26 @@ class PassiveTDAgent(Generic[State, Action]):
         *,
         terminal: bool = False,
     ) -> Action | None:
-        # TODO: Unpack the current state and reward from the prior transition.
-        # TODO: Initialize the utility of a newly observed state. TODO: If a
-        # previous state exists, increment its update count and update its
-        # utility using the reward and successor utility (TD(0)). TODO: Use zero
-        # successor value on true termination; then reset episode state and
-        # return None after processing the final transition. TODO: Otherwise
-        # remember this state and sample an action from pi.
+        """Process (s_prime, reward) and return an action under the fixed
+        policy."""
+        # TODO 1: Unpack percept into s_prime and reward (the textbook's r).
+
+        # TODO 2: If s_prime is new, initialize U[s_prime] to zero.
+
+        # TODO 3: If the previous state s is not None: Initialize its integer
+        #   count N[s] to zero if absent, then increment. Obtain alpha(N[s])
+        #   using self.learning_rate. Apply the textbook update to U[s]: U[s] <-
+        #   U[s] + alpha(N[s]) * (reward + gamma * U[s_prime] - U[s]). For true
+        #   termination, use zero for the successor utility.
+
+        # TODO 4: MiniGrid episode handling: after learning the final
+        # transition, reset the previous state and return None if terminal is
+        # True.
+
+        # TODO 5: Remember s_prime as the previous state s.
+
+        # TODO 6: Return an action under pi(s_prime). Here pi returns an action
+        # probability dictionary, so sample one action rather than returning it.
         pass
 
     def act(self, percept: tuple[State, float, bool]) -> Action | None:
@@ -95,7 +127,9 @@ class PassiveTDAgent(Generic[State, Action]):
 
     @staticmethod
     def learning_rate(update_count: int) -> float:
-        # TODO: Return a decreasing step size for a positive state update count.
+        # TODO: Implement the textbook's alpha(n) for a positive update_count.
+        # Choose a schedule with sum(alpha(n)) infinite and sum(alpha(n)^2)
+        # finite.
         pass
 
     def reset_episode(self) -> None:
@@ -174,9 +208,39 @@ def save_heatmap(
     width: int = 4,
     height: int = 3,
 ) -> None:
-    # TODO: Plot utilities by position, mark unseen cells and the goal, and
-    # save.
-    pass
+    """Save one utility per (x, y) cell; gray cells are unobserved."""
+    fig, ax = plt.subplots(
+        figsize=(max(7, width * 0.8), max(5, height * 0.7)), constrained_layout=True
+    )
+    cmap = plt.get_cmap("viridis").copy()
+    cmap.set_bad("lightgray")
+    values = np.full((height, width), np.nan)
+    for y in range(1, height + 1):
+        for x in range(1, width + 1):
+            if (x, y) in agent.U:
+                values[y - 1, x - 1] = agent.U[x, y]
+    plot = ax.imshow(values, cmap=cmap, vmin=0, vmax=1)
+    ax.set(xlabel="x", ylabel="y")
+    ax.set_xticks(range(width), labels=range(1, width + 1))
+    ax.set_yticks(range(height), labels=range(1, height + 1))
+    for y in range(height):
+        for x in range(width):
+            value = values[y, x]
+            text = "unseen" if np.isnan(value) else f"{value:.3f}"
+            if (x, y) == (width - 1, 0):
+                text = "Goal\n" + text
+            ax.text(
+                x,
+                y,
+                text,
+                ha="center",
+                va="center",
+                color="white" if not np.isnan(value) and value < 0.5 else "black",
+            )
+    fig.colorbar(plot, ax=ax, label="Estimated discounted return")
+    ax.set_title(f"{width}×{height} utilities after episode {episode} (gray = unseen)")
+    fig.savefig(destination, dpi=150)
+    plt.close(fig)
 
 
 def train(
@@ -188,17 +252,115 @@ def train(
     height: int = 3,
     max_steps: int = 256,
 ) -> Path:
-    # TODO: Validate options, create SimpleEnv, and seed action sampling. TODO:
-    # Create PassiveTDAgent with fixed_policy bound to env.goal_pos. TODO:
-    # Default outputs to outputs/passive-td/WIDTHxHEIGHT. TODO: Reset the
-    # environment and agent episode state for each episode. TODO: Pass position,
-    # reward, and termination status to agent.act each step. TODO: Use
-    # stationary learning rewards, as in the passive ADP script. TODO: On
-    # truncation, learn the last transition with its successor value, then reset
-    # episode state without marking that successor as terminal. TODO: Save
-    # videos and heatmaps for episodes 1-10 and later checkpoints. TODO: Write
-    # episode metrics to CSV, close resources, and return the path.
-    pass
+    """Reset this size's outputs, recording episodes 1–10 and later
+    checkpoints."""
+    if episodes < 1 or checkpoint_every < 1:
+        raise ValueError("episodes and checkpoint_every must be positive")
+    # Validate the environment before replacing any previous outputs.
+    env = SimpleEnv(
+        width=width, height=height, max_steps=max_steps, render_mode="rgb_array"
+    )
+    output_root = (
+        Path(output_dir)
+        if output_dir is not None
+        else Path(__file__).parent / "outputs" / "passive-td"
+    )
+    output_dir = output_root / f"{width}x{height}"
+    videos = output_dir / "videos"
+    heatmaps = output_dir / "heatmaps"
+    for directory in (videos, heatmaps):
+        if directory.exists():
+            shutil.rmtree(directory)
+    videos.mkdir(parents=True, exist_ok=True)
+    heatmaps.mkdir(parents=True, exist_ok=True)
+
+    random.seed(seed)
+    agent = PassiveTDAgent(partial(fixed_policy, goal=env.goal_pos))
+    try:
+        with (output_dir / "episodes.csv").open("w", newline="") as metrics:
+            log = csv.writer(metrics)
+            log.writerow(
+                [
+                    "episode",
+                    "steps",
+                    "terminated",
+                    "truncated",
+                    "environment_return",
+                    "learning_return",
+                ]
+            )
+            for episode in range(1, episodes + 1):
+                env.reset(seed=seed + episode - 1)
+                agent.reset_episode()
+                state = tuple(env.agent_pos)
+                action = agent.act((state, 0.0, False))
+                checkpoint = episode <= 10 or episode % checkpoint_every == 0
+                writer = None
+                steps = 0
+                environment_return = 0.0
+                learning_return = 0.0
+                try:
+                    if checkpoint:
+                        writer = imageio.get_writer(
+                            videos / f"episode_{episode:04d}.mp4",
+                            fps=10,
+                            codec="libx264",
+                            macro_block_size=1,
+                        )
+                        writer.append_data(env.render())
+                    while True:
+                        if action is None:
+                            raise RuntimeError(
+                                "TD agent returned no action before episode end. "
+                                "Complete act() and passive_td_learning() first."
+                            )
+                        _, reward, terminated, truncated, _ = env.step(action)
+                        steps += 1
+                        environment_return += reward
+                        # The native reward depends on elapsed time. Use
+                        # stationary transition rewards for the (x, y) state
+                        # model.
+                        learning_reward = float(terminated)
+                        learning_return += learning_reward
+                        state = tuple(env.agent_pos)
+                        # Process the final transition even on time-limit
+                        # truncation. Only true termination gives the state
+                        # terminal semantics.
+                        action = agent.act((state, learning_reward, terminated))
+                        if writer is not None:
+                            writer.append_data(env.render())
+                        if terminated or truncated:
+                            agent.reset_episode()
+                            break
+                finally:
+                    if writer is not None:
+                        writer.close()
+                log.writerow(
+                    [
+                        episode,
+                        steps,
+                        terminated,
+                        truncated,
+                        environment_return,
+                        learning_return,
+                    ]
+                )
+                if checkpoint:
+                    save_heatmap(
+                        agent,
+                        episode,
+                        heatmaps / f"episode_{episode:04d}.png",
+                        width,
+                        height,
+                    )
+                    metrics.flush()
+                    print(
+                        f"Episode {episode}: {steps} steps; goal={terminated}; saved video and heatmap",
+                        flush=True,
+                    )
+    finally:
+        env.close()
+    return output_dir
 
 
 def main() -> None:
